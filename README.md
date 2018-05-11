@@ -14,5 +14,5 @@
 
 <b>Execution: </b> <br />
 Open powershell in Admin mode.<br />
-cd to "HyperVVMDeploy" folder.<br />
+cd to "HyperV_VM_Deployment" folder.<br />
 Run ".\CreateVMs.ps1 <Your_Config_XML>"<br />
