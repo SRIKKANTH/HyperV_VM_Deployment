@@ -1,18 +1,18 @@
-Prerequisites:
-1. Make sure Hyper-V is installed and configured with atleast 1 virtual switch. 
-2. A Linux VHD with following:
-	a. Root user password.
-	b. Enable root to connect through ssh.
-	c. Install "linux-cloud-tools-`uname -r`" package. (Without this HyperV cannot get IP address of the VM)
-3. Keep following binaries in ".\bin" directory.
-	a. dos2unix.exe
-	b. plink.exe
-	c. pscp.exe
-	d. putty.exe
-	e. puttygen.exe
-4. Configure the  .xml file according to your requirements.
+<b>Prerequisites: </b>
+1. Make sure Hyper-V is installed and configured with atleast 1 virtual switch. <br />
+2. A Linux VHD with following:<br />
+	a. Root user password.<br />
+	b. Enable root to connect through ssh.<br />
+	c. Install "linux-cloud-tools-`uname -r`" package. (Without this HyperV cannot get IP address of the VM)<br />
+3. Keep following binaries in ".\bin" directory.<br />
+	a. dos2unix.exe<br />
+	b. plink.exe<br />
+	c. pscp.exe<br />
+	d. putty.exe<br />
+	e. puttygen.exe<br />
+4. Configure the  .xml file according to your requirements.<br />
 
-Execution:
-Open powershell in Admin mode.
-cd to "HyperVVMDeploy" folder.
-Run ".\CreateVMs.ps1 <Your_Config_XML>"
+<b>Execution: </b> <br />
+Open powershell in Admin mode.<br />
+cd to "HyperVVMDeploy" folder.<br />
+Run ".\CreateVMs.ps1 <Your_Config_XML>"<br />
