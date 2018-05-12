@@ -3,8 +3,8 @@
 2. A Linux VHD with following:<br />
 	a. Root user configured with password.<br />
 	b. Enable root to connect through ssh.<br />
-	c. Install "linux-cloud-tools-`uname -r`" package. (Without this HyperV cannot get IP address of the VM)<br />
-		$ sudo apt install *`uname -r`*  # should install all the required packages
+	c. Install "linux-cloud-tools-&#96;uname -r&#96;" package. (Without this HyperV cannot get IP address of the VM)<br />
+		&#36; sudo apt install *&#96;uname -r&#96;*  # should install all the required packages<br />
 3. Keep following binaries in ".\bin" directory.<br />
 	a. dos2unix.exe<br />
 	b. plink.exe<br />
