@@ -3633,4 +3633,3 @@ function DoPS1TestCompleted ([System.Xml.XmlElement] $vm, [XML] $xmlData)
         UpdateState $vm $DetermineReboot
     }
 }
-0

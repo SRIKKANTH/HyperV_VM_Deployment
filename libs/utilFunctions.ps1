@@ -838,7 +838,7 @@ function AbortCurrentTest([System.Xml.XmlElement] $vm, [string] $msg)
     $vm.testCaseResults = $Aborted
     $vm.state = $CollectLogFiles
 
-    logMsg 2 "Info : $($vm.vmName) transitioned to state $($vm.state)"
+    logMsg 2 "Info : Virtual Machine '$($vm.vmName)' transitioned to state $($vm.state)"
     $vm.stateTimestamp = [DateTime]::Now.ToString()
 }
 

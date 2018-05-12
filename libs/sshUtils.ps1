@@ -1,8 +1,8 @@
 ﻿Function LogErr ([string]$msg)
 {
-	LogMsg 0 "Info: $($msg)"
+	LogMsg 0 "Error: $($msg)"
 }
-
+$LogDir=".\Logs"
 Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $username, $password, [switch]$upload, [switch]$download, [switch]$usePrivateKey, [switch]$doNotCompress) #Removed XML config
 {
 	$retry=1
@@ -25,7 +25,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 					if ( ( $f.Split(".")[$f.Split(".").count-1] -eq "sh" ) -or ( $f.Split(".")[$f.Split(".").count-1] -eq "py" ) )
 					{
 						$out = .\bin\dos2unix.exe $f 2>&1
-						LogMsg 0 $out
+						LogMsg 9 "Info: $out"
 					}
 					$fileCounter ++
 				}
@@ -65,7 +65,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						{
 							LogMsg 0 "Info: Uploading $tarFileName to $username : $uploadTo, port $port using Password authentication"
 							$curDir = $PWD
-							$uploadStatusRandomFile = "UploadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
+							$uploadStatusRandomFile = "$LogDir\UploadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
 							$uploadStartTime = Get-Date
 							$uploadJob = Start-Job -ScriptBlock { cd $args[0]; Write-Host $args; Set-Content -Value "1" -Path $args[6]; $username = $args[4]; $uploadTo = $args[5]; echo y | .\bin\pscp -v -pw $args[1] -q -P $args[2] $args[3] $username@${uploadTo}: ; Set-Content -Value $LASTEXITCODE -Path $args[6];} -ArgumentList $curDir,$password,$port,$tarFileName,$username,${uploadTo},$uploadStatusRandomFile
 							sleep -Milliseconds 100
@@ -150,7 +150,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						{
 							LogMsg 0 "Info: Uploading $testFile to $username : $uploadTo, port $port using Password authentication"
 							$curDir = $PWD
-							$uploadStatusRandomFile = "UploadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
+							$uploadStatusRandomFile = "$LogDir\UploadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
 							$uploadStartTime = Get-Date
 							$uploadJob = Start-Job -ScriptBlock { cd $args[0]; Write-Host $args; Set-Content -Value "1" -Path $args[6]; $username = $args[4]; $uploadTo = $args[5]; echo y | .\bin\pscp -v -pw $args[1] -q -P $args[2] $args[3] $username@${uploadTo}: ; Set-Content -Value $LASTEXITCODE -Path $args[6];} -ArgumentList $curDir,$password,$port,$testFile,$username,${uploadTo},$uploadStatusRandomFile
 							sleep -Milliseconds 100
@@ -219,7 +219,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 					{
 						LogMsg 0 "Info: Downloading $testFile from $username : $downloadFrom,port $port to $downloadTo using PrivateKey authentication"
 						$curDir = $PWD
-						$downloadStatusRandomFile = "DownloadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
+						$downloadStatusRandomFile = "$LogDir\DownloadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
 						$downloadStartTime = Get-Date
 						$downloadJob = Start-Job -ScriptBlock { $curDir=$args[0];$sshKey=$args[1];$port=$args[2];$testFile=$args[3];$username=$args[4];${downloadFrom}=$args[5];$downloadTo=$args[6];$downloadStatusRandomFile=$args[7]; cd $curDir; Set-Content -Value "1" -Path $args[6]; echo y | .\bin\pscp -i .\ssh\$sshKey -q -P $port $username@${downloadFrom}:$testFile $downloadTo; Set-Content -Value $LASTEXITCODE -Path $downloadStatusRandomFile;} -ArgumentList $curDir,$sshKey,$port,$testFile,$username,${downloadFrom},$downloadTo,$downloadStatusRandomFile
 						sleep -Milliseconds 100
@@ -246,7 +246,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 					{
 						LogMsg 0 "Info: Downloading $testFile from $username : $downloadFrom,port $port to $downloadTo using Password authentication"
 						$curDir = $PWD
-						$downloadStatusRandomFile = "DownloadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
+						$downloadStatusRandomFile = "$LogDir\DownloadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
 						$downloadStartTime = Get-Date
 						$downloadJob = Start-Job -ScriptBlock { $curDir=$args[0];$password=$args[1];$port=$args[2];$testFile=$args[3];$username=$args[4];${downloadFrom}=$args[5];$downloadTo=$args[6];$downloadStatusRandomFile=$args[7]; cd $curDir; Set-Content -Value "1" -Path $args[6]; ; echo y | .\bin\pscp -pw $password -q -P $port $username@${downloadFrom}:$testFile $downloadTo ; Set-Content -Value $LASTEXITCODE -Path $downloadStatusRandomFile;} -ArgumentList $curDir,$password,$port,$testFile,$username,${downloadFrom},$downloadTo,$downloadStatusRandomFile
 						sleep -Milliseconds 100

@@ -117,9 +117,11 @@
 
 param([String] $xmlFile)
 
-$dbgLevel=5
+$dbgLevel=1
 $LogDir="Logs"
 $logfile="$($LogDir)\LocalLogFile.log"
+$exitStatus = 1
+
 ########################################################################
 #
 # LogMsg()
@@ -165,7 +167,7 @@ function LogMsg([int]$level, [string]$msg) {
 }
 
 . .\libs\stateEngine.ps1
-. .\libs\sshUtils.ps1
+. .\libs\sshUtils.ps1 
 
 #######################################################################
 #
@@ -274,6 +276,138 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
     }
 }
 
+function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
+{
+	$parentVhd = ""
+	LogMsg 9 "Info: VMNAME $vm.vmName"
+    #
+    # Make sure the parent .vhd file exists
+    #
+    if ($vm.hardware.parentVhd)
+    {
+        $parentVhd = $vm.hardware.parentVhd
+        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)) )
+        {
+			$vhdDir=Join-Path $(Get-Location) "ParentVhds"
+			If((test-path $(Join-Path $vhdDir $parentVhd)))
+			{
+				$parentVhd = Join-Path $vhdDir $parentVhd
+				LogMsg 9 "Debug: parentVhd=$parentVhd"
+			}
+			else
+			{
+				LogMsg 9 "Debug: parentVhd isn't found in $vhdDir"
+				if ($xmlData.Config.global.imageStoreDir)
+				{
+					$vhdDir = $xmlData.Config.global.imageStoreDir
+					LogMsg 9 "Debug: vhdDir=$vhdDir"
+					if((test-path $(Join-Path $vhdDir $parentVhd)))
+					{
+						$parentVhd = Join-Path $vhdDir $parentVhd
+						LogMsg 9 "Debug: parentVhd=$parentVhd"
+					}
+				}
+				else
+				{
+					LogMsg 9 "Debug: 'imageStoreDir' wasn't provided in config.xml file."
+					LogMsg 9 "Debug: Checking for parentVhd in Hyper-V server's default VirtualHardDiskPath"
+					$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+					LogMsg 9 "Debug: vhdDir=$vhdDir"
+					if((test-path $(Join-Path $vhdDir $parentVhd)))
+					{
+						$parentVhd = Join-Path $vhdDir $parentVhd
+						LogMsg 9 "Debug: parentVhd=$parentVhd"
+					}
+					else
+					{
+						LogMsg 0 "Error: Provide atleast one valid vhd path"
+						exit 1
+					}
+				}
+			}
+        }
+        if( -not (test-path $parentVhd))
+		{
+			
+		}
+		else
+		{
+			LogMsg 9 "Debug: '$parentVhd' file exists"
+		}
+
+        $uriPath = New-Object -TypeName System.Uri -ArgumentList $parentVhd
+        if ($uriPath.IsUnc)
+        {
+            if (-not $(Test-Path $parentVhd))
+            {
+                LogMsg 0 "Error: Remote parent vhd file ${parentVhd} does not exist."
+                return $False
+            }
+        } 
+        else
+        {
+            $fileInfo = GetRemoteFileInfo $parentVhd $hvServer
+            if (-not $fileInfo)
+            {
+                LogMsg 0 "Error: The parent .vhd file ${parentVhd} does not exist for ${vmName}"
+                return $False
+            }
+        }
+        LogMsg 9 "Debug: parentVhd=$parentVhd"
+    }
+    elseif ($vm.hardware.importVM)
+    {
+        #
+        # Verify the .xml file for the import VM exists
+        #
+        $importVmInfo = GetRemoteFileInfo $vm.hardware.importVM
+        if (-not $fileInfo)
+        {
+            LogMsg 0 "Error: The importVM xml file does not exist, or cannot be accessed"
+            return $False
+        }
+    }
+    else
+    {
+		$PathArray = @("ParentVhds", $xmlData.Config.global.imageStoreDir, $((Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath))
+
+		For ($i=0; $i -lt $PathArray.Length; $i++) 
+		{
+			if($PathArray[$i])
+			{
+				if (Test-Path $PathArray[$i])
+				{
+					$latestFile = Join-Path $PathArray[$i] "latest"
+					if (Test-Path $latestFile)
+					{
+						$parentVhd = Get-Content $latestFile
+					}
+					else
+					{
+						$TempParentVhd = $(Get-ChildItem $PathArray[$i] | Where-Object { $_.Extension -eq ".vhd" -or $_.Extension -eq ".vhdx"} | Sort LastWriteTime | Select -Last 1).Name
+						if ($TempParentVhd)
+						{
+							if((test-path $(Join-Path $PathArray[$i] $TempParentVhd)))
+							{
+								$parentVhd = Join-Path $PathArray[$i] $TempParentVhd
+								LogMsg 9 "Debug: Found a vhd at '$parentVhd'"
+							}
+						}
+						else
+						{
+							LogMsg 9 "Debug: `$TempParentVhd is null"
+						}
+					}
+				}
+				else
+				{
+					LogMsg 9 "Debug: Folder doesn't exists"
+				}
+			}
+		}
+    }
+    return $parentVhd
+}
 #######################################################################
 #
 # CheckRequiredParameters()
@@ -339,52 +473,13 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     #
     # Make sure the parent .vhd file exists
     #
-    if ($vm.hardware.parentVhd)
+    $parentVhd = GetParentVhd $vm  $xmlData
+    if ( -not $parentVhd)
     {
-        $parentVhd = $vm.hardware.parentVhd
-        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)) )
-        {
-            $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-            if ($xmlData.Config.global.imageStoreDir)
-            {
-                $vhdDir = $xmlData.Config.global.imageStoreDir
-            }
-
-            $parentVhd = Join-Path $vhdDir $parentVhd
-        }
-
-        $uriPath = New-Object -TypeName System.Uri -ArgumentList $parentVhd
-        if ($uriPath.IsUnc)
-        {
-            if (-not $(Test-Path $parentVhd))
-            {
-                LogMsg 0 "Error: Remote parent vhd file ${parentVhd} does not exist."
-                return $False
-            }
-        } 
-        else
-        {
-            $fileInfo = GetRemoteFileInfo $parentVhd $hvServer
-            if (-not $fileInfo)
-            {
-                LogMsg 0 "Error: The parent .vhd file ${parentVhd} does not exist for ${vmName}"
-                return $False
-            }
-        }
-    }
-    elseif ($vm.hardware.importVM)
-    {
-        #
-        # Verify the .xml file for the import VM exists
-        #
-        $importVmInfo = GetRemoteFileInfo $vm.hardware.importVM
-        if (-not $fileInfo)
-        {
-            LogMsg 0 "Error: The importVM xml file does not exist, or cannot be accessed"
-            return $False
-        }
-    }
-     
+		LogMsg 0 "Error: Unable to find parentVhd file`n Exitting now..."
+		exit 1        
+    }  
+    
     $dataVhd = $vm.hardware.DataVhd
     if ($dataVhd)
     {
@@ -626,6 +721,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
     $vmName = $vm.vmName
     $hvServer = $vm.hvServer
     $vhdFilename = $null
+	$parentVhd = GetParentVhd $vm  $xmlData
 
     if (-not $vm.hardware.create -or $vm.hardware.create -ne "true")
     {
@@ -737,8 +833,47 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             $memSize = [Uint64]$vm.hardware.memsize
             Set-VMMemory -VMName $vmName -StartupBytes $($memSize * 1MB) -ComputerName $hvServer
         }
-
+		LogMsg 9 "Debug: parentVhd===$($($vm).hardware).parentVhd"
+		LogMsg 9 "Debug: parentVhd===$parentVhd"
+<#
         $parentVhd = $vm.hardware.parentVhd
+        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)) )
+        {
+			$vhdDir=Join-Path $(Get-Location) "ParentVhds"
+			If((test-path $(Join-Path $vhdDir $parentVhd)))
+			{
+				$parentVhd = Join-Path $vhdDir $parentVhd
+				LogMsg 9 "Debug: parentVhd=$parentVhd"
+			}
+			else
+			{
+				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+				if ($xmlData.Config.global.imageStoreDir)
+				{
+					$vhdDir = $xmlData.Config.global.imageStoreDir
+					if((test-path $(Join-Path $vhdDir $parentVhd)))
+					{
+						$parentVhd = Join-Path $vhdDir $parentVhd
+						LogMsg 9 "Debug: parentVhd=$parentVhd"
+					}
+				}
+				else
+				{
+					LogMsg 0 "Error: Provide a valid vhd path"
+				}
+
+				$parentVhd = Join-Path $vhdDir $parentVhd
+			}
+        }
+        if( -not (test-path $parentVhd))
+		{
+			
+		}
+		else
+		{
+			LogMsg 9 "Debug: '$parentVhd' file exists"
+		}
+
         if (-not ([System.IO.Path]::IsPathRooted($parentVhd)))
         {
             $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
@@ -764,8 +899,9 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 
             $parentVhd = Join-Path $vhdDir $parentVhd
         }
-
+#>
             # If parent VHD is remote, copy it to local VHD directory
+        
         $uriPath = New-Object -TypeName System.Uri -ArgumentList $parentVhd
         if ($uriPath.IsUnc)
         {
@@ -798,7 +934,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             $parentVhd = $dstPath
         }
         $vhdFilename = $parentVhd
-
+		LogMsg 9 "Debug: vhdFilename===$vhdFilename"
         $disableDiff = $vm.hardware.disableDiff -eq "true"
         if (-not $disableDiff)
         {
@@ -807,11 +943,23 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             # If the parentVhd is an Absolute path, it will be use as is. 
             # If parentVhd is a relative path, then prepent the HyperV servers default VHD directory.
             #
-            $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
             $vhdName = "${vmName}_diff.vhd"
-            $vhdFilename = $vhdDir + $vhdName
-            $vhdFilenameNetPath = "\\" + $hvServer + "\" + $vhdFilename.Replace(":","$")
+            if ($xmlData.Config.VMs.VM.hvServer -eq "localhost")
+            {
+				$vhdDir = Join-Path $(Get-Location) "ParentVhds"
+            }
+            else
+            {
+				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
 
+            }
+			$vhdFilename = Join-Path $vhdDir  $vhdName
+			$vhdFilenameNetPath = "\\" + $hvServer + "\" + $vhdFilename.Replace(":","$")
+            LogMsg 9 "Info: vhdDir=$vhdDir"
+            LogMsg 9 "Info: vhdFilename=$vhdFilename"
+            LogMsg 9 "Info: vhdFilenameNetPath=$vhdFilenameNetPath"
+            LogMsg 1 "Info: Using '$parentVhd' as parentVhd"
+            
             # Check if differencing boot disk exists, and if yes, delete it
             if(Test-Path $vhdFilenameNetPath) {
                 Remove-Item -Path $vhdFilenameNetPath -Force
@@ -820,7 +968,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             #Create the boot .vhd
             #
             $bootVhd = New-VHD -Path $vhdFilename -ParentPath $parentVhd -ComputerName $hvServer
-
+			LogMsg 9 "Debug: bootVhd=$bootVhd"
             if (-not $bootVhd)
             {
                 LogMsg 0 "Error: Failed to create $vhdFilename using parent $parentVhd for VM ${vmName}"
@@ -962,7 +1110,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             }
         }
         
-        LogMsg 0 "Info: VM ${vmName} created successfully!"
+        LogMsg 0 "Info: Virtual Machine '${vmName}' created successfully!"
         $retVal = $True       
     }
 
@@ -1006,8 +1154,9 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
     }
     else
     {
-	    $timeout = 180
-	    while ($timeout -gt 0)
+	    $MaxTimeout = 180
+	    $timeout = 0
+	    while ($timeout -lt $MaxTimeout)
 	    {
 		    #
 		    # Check if the VM is in the Hyper-v Running state
@@ -1016,55 +1165,74 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 		    if ($IPv4 )
 		    {
 			    $vm.ipv4=$IPv4
-			    LogMsg 0 "IP of $($vm.vmName): $($vm.ipv4)"
+			    #Write-Host ""
+			    LogMsg 0 "`nInfo: IP of $($vm.vmName): $($vm.ipv4)"
+			    LogMsg 3 "Info: Got IP address in '$timeout seconds'"
                 return $IPv4
 		    }
+		    Write-Host "." -NoNewline
 
 		    start-sleep -seconds 1
-		    $timeout -= 1
+		    $timeout += 1
 	    }
+	    Write-Host ""
 
 	    #
 	    # Check if we timed out waiting to reach the Hyper-V Running state
 	    #
 	    if ($timeout -eq 0)
 	    {
-		    LogMsg 0 "IP of $($vm.vmName) not retrivable"
+		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"
 	    } 
     }
 }
 
+function CheckDependencies()
+{
+	LogMsg 0 "Info: Verifying dependencies.."
+	$DependencyArray = @(".\bin\dos2unix.exe", ".\bin\plink.exe", "bin\pscp.exe")
+	For ($i=0; $i -lt $DependencyArray.Length; $i++) 
+	{
+		if (-not (Test-Path $DependencyArray[$i]))
+		{
+			LogMsg 0 "Error: `$DependencyArray[$i]` file doesn't exist`n Exitting now..."
+			exit exitStatus
+		}
+	}
 
+	If(!(test-path $LogDir))
+	{
+		  New-Item -ItemType Directory -Force -Path $LogDir
+	}
+
+	if (! $xmlFile)
+	{
+		LogMsg 0 "Error: The xmlFile argument is null."
+		exit $exitStatus
+	}
+
+	if (! (test-path $xmlFile))
+	{
+		LogMsg 0 "Error: The XML file '${xmlFile}' does not exist."
+		exit $exitStatus
+	}
+}
 
 #######################################################################
 #
 # Main script body
 #
 #######################################################################
-$exitStatus = 1
 
-if (! $xmlFile)
-{
-    "Error: The xmlFile argument is null."
-    "False"
-    exit $exitStatus
-}
-
-if (! (test-path $xmlFile))
-{
-    "Error: The XML file '${xmlFile}' does not exist."
-    "False"
-    exit $exitStatus
-}
-
+CheckDependencies
 #
 # Parse the .xml file
 #
 $xmlData = [xml] (Get-Content -Path $xmlFile)
 if ($null -eq $xmlData)
 {
-    "Error: Unable to parse the .xml file ${xmlFile}"
-    "False"
+    LogMsg 0 "Error: Unable to parse the .xml file ${xmlFile}"
+    LogMsg 0 "Error: Invalid .xml file ${xmlFile}"
     exit $exitStatus
 }
 
@@ -1073,8 +1241,8 @@ if ($null -eq $xmlData)
 #
 if (-not $xmlData.Config.VMs.VM)
 {
-    "Error: No VMs defined in .xml file ${xmlFile}"
-    "False"
+    LogMsg 0 "Error: No VMs defined in .xml file ${xmlFile}"
+    LogMsg 0 "Error: Invalid .xml file ${xmlFile}"
     exit $exitStatus
 }
 
@@ -1098,7 +1266,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     }
     else
     {
-        LogMsg 0 "Error : The VM $($vm.vmName) does not have a hardware definition.
+        LogMsg 0 "Error: The VM $($vm.vmName) does not have a hardware definition.
                       The VM will not be created !"
         exit 0
     }
@@ -1115,7 +1283,9 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 		
 		if (-not $VMIP)
 		{
-			LogMsg 0 "Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd?"
+			LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
+			LogMsg 0 "Fix: run 'sudo apt install *`uname -r`* in the parent .vhd and use it'"
+			LogMsg 0 "Error: Also check Switch settings!"
 		}
 		else
 		{
@@ -1128,4 +1298,5 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 		exit $exitStatus
 	}
 }
-exit 0
+$exitStatus=0
+exit $exitStatus
