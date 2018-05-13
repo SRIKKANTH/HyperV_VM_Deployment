@@ -22,7 +22,7 @@
 <#
 .Synopsis
     Automation to create a VM based on a set of parameters.
-    
+
 .Description
     For a VM to be created, the VM definition in the .xml file must
    include a hardware section.  The <parentVhd> and at least one
@@ -66,7 +66,7 @@
 
        <isCluster>   When set to true, the vm will be created on the cluster
                      storage. The vhd will also be copied in the cluster
-                     storage. Finally, the vm will be configured for 
+                     storage. Finally, the vm will be configured for
                      high availability
 
        <nic>         Defines a NIC to add to the VM. The VM must have
@@ -117,57 +117,22 @@
 
 param([String] $xmlFile)
 
-$dbgLevel=1
-$LogDir="Logs"
-$logfile="$($LogDir)\LocalLogFile.log"
+$dbgLevel_Debug=10
+$dbgLevel_Release=1
+$dbgLevel=$dbgLevel_Debug
+
+$WorkingDir=(Get-Item -Path ".\").FullName
+$DateString=$((Get-Date).ToString('yyyy_MM_dd_hh_mm_ss'))
+$LogDir="Logs\$DateString"
+$LogFolder="$($WorkingDir)\$($LogDir)"
+$logfile="$($LogFolder)\LocalLogFile.log"
+
+New-Item -ItemType Directory -Force -Path $LogFolder | out-null
+
 $exitStatus = 1
 
-########################################################################
-#
-# LogMsg()
-#
-########################################################################
-function LogMsg([int]$level, [string]$msg) {
-    <#
-    .Synopsis
-        Write a message to the log file and the console.
-    .Description
-        Add a time stamp and write the message to the test log.  In
-        addition, write the message to the console.  Color code the
-        text based on the level of the message.
-    .Parameter level
-        Debug level of the message
-    .Parameter msg
-        The message to be logged
-    .Example
-        LogMsg 3 "This is a test"
-    #>
-
-    if ($level -le $dbgLevel)
-    {
-        $now = [Datetime]::Now.ToString("MM/dd/yyyy HH:mm:ss : ")
-        ($now + $msg) | out-file -encoding ASCII -append -filePath $logfile
-
-        $color = "white"
-        if ( $msg.StartsWith("Error"))
-        {
-            $color = "red"
-        }
-        elseif ($msg.StartsWith("Warn"))
-        {
-            $color = "Yellow"
-        }
-        else
-        {
-            $color = "gray"
-        }
-
-        write-host -f $color "$msg"
-    }
-}
-
 . .\libs\stateEngine.ps1
-. .\libs\sshUtils.ps1 
+. .\libs\sshUtils.ps1
 
 #######################################################################
 #
@@ -196,9 +161,9 @@ function GetRemoteFileInfo([String] $filename, [String] $server )
     }
 
     $remoteFilename = $filename.Replace("\", "\\")
-    
+
     $fileInfo = Get-WmiObject -query "SELECT * FROM CIM_DataFile WHERE Name='${remoteFilename}'" -computer $server
-     
+
     return $fileInfo
 }
 
@@ -239,11 +204,11 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
             if ($currentNode -eq $clusterNodes[0].Name.ToLower()) {
                 $destinationNode = $clusterNodes[1].Name.ToLower()
             } else {
-                $destinationNode = $clusterNodes[0].Name.ToLower() 
+                $destinationNode = $clusterNodes[0].Name.ToLower()
             }
 
             if (Get-VM -Name $vmName -ComputerName $destinationNode -ErrorAction SilentlyContinue) {
-                Remove-VM $vmName -ComputerName $destinationNode -Force   
+                Remove-VM $vmName -ComputerName $destinationNode -Force
             }
         }
     }
@@ -258,7 +223,7 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
                     return $False
                 }
             }
-            
+
 	    LogMsg 0 "Info: Cleanup: Deleting existing VM.."
         Remove-VM $vmName -ComputerName $hvServer -Force
     }
@@ -271,7 +236,7 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
         $fileInfo = GetRemoteFileInfo $vhdFilename -server $hvServer
         if ($fileInfo)
         {
-            $fileInfo.Delete()  
+            $fileInfo.Delete()
         }
     }
 }
@@ -279,7 +244,7 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
 function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
 {
 	$parentVhd = ""
-	LogMsg 9 "Info: VMNAME $vm.vmName"
+	LogMsg 9 "Debug: VMNAME $vm.vmName"
     #
     # Make sure the parent .vhd file exists
     #
@@ -328,7 +293,7 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
         }
         if( -not (test-path $parentVhd))
 		{
-			
+
 		}
 		else
 		{
@@ -343,7 +308,7 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
                 LogMsg 0 "Error: Remote parent vhd file ${parentVhd} does not exist."
                 return $False
             }
-        } 
+        }
         else
         {
             $fileInfo = GetRemoteFileInfo $parentVhd $hvServer
@@ -369,9 +334,9 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
     }
     else
     {
-		$PathArray = @("ParentVhds", $xmlData.Config.global.imageStoreDir, $((Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath))
+		$PathArray = @($(Join-Path (Get-Item -Path ".\").FullName "ParentVhds"), $xmlData.Config.global.imageStoreDir, $((Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath))
 
-		For ($i=0; $i -lt $PathArray.Length; $i++) 
+		For ($i=0; $i -lt $PathArray.Length; $i++)
 		{
 			if($PathArray[$i])
 			{
@@ -434,7 +399,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         LogMsg 0 "Error: VM $($vm.vmName) is missing a hvServer tag"
         return $False
     }
-    
+
     $vmName = $vm.vmName
     $hvServer = $vm.hvServer
 
@@ -443,22 +408,22 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     # If isCluster tag is set to true, make sure that a cluster is available on the server
     #
     if ( $vm.hardware.isCluster -eq "True") {
-        Get-Cluster 
+        Get-Cluster
         if ($? -eq $False){
             LogMsg 0 "Error: Server $hvServer doesn't have a cluster set up"
-            return $False  
+            return $False
         }
         $clusterDir = Get-ClusterSharedVolume
         $vhdDir = $clusterDir.SharedVolumeInfo.FriendlyVolumeName
-    } 
+    }
     else {
         $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
     }
 
-    $vhdName = "${vmName}.vhdx"
+    $vhdName = "${vmName}.vhd"
     $vhdFilename = "\\" + $hvServer + "\" + $vhdDir + $vhdName
     $vhdFilename = $vhdFilename.Replace(":","$")
-    DeleteVmAndVhd $vmName $hvServer $vhdFilename 
+    DeleteVmAndVhd $vmName $hvServer $vhdFilename
 
     #
     # Make sure the future boot disk .vhd file does not already exist
@@ -469,7 +434,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         LogMsg 0 "Error: The boot disk .vhd file for VM ${vmName} already exists. VHD = ${vhdFilename}"
         return $False
     }
-
+	
     #
     # Make sure the parent .vhd file exists
     #
@@ -477,9 +442,9 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     if ( -not $parentVhd)
     {
 		LogMsg 0 "Error: Unable to find parentVhd file`n Exitting now..."
-		exit 1        
-    }  
-    
+		exit 1
+    }
+
     $dataVhd = $vm.hardware.DataVhd
     if ($dataVhd)
     {
@@ -520,15 +485,15 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         {
             LogMsg 0 "Warn: Unable to determine the number of processors on HyperV server ${hvServer}. numCPUs has been set to 1"
             $vm.hardware.numCPUs = "1"
-            
+
         }
         else
         {
             $CPUs = $processors.NumberOfLogicalProcessors
-            
+
             $maxCPUs = 0
             foreach ($result in $CPUs) {$maxCPUs += $result}
-            
+
             if ($maxCPUs -and [int]$($vm.hardware.numCPUs) -gt $maxCPUs)
             {
                 LogMsg 0 "Warn: The numCPUs for VM ${vmName} is larger than the HyperV server supports (${maxCPUs}). numCPUs has been set to max"
@@ -568,7 +533,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
                 }
             default {
                     LogMsg 0 "Warn: Invalid memSize. MemSize defaulting to 1024MB"
-                } 
+                }
             }
         }
         else
@@ -600,7 +565,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
             {
                 $totalMemory += $slot.Capacity
             }
-            
+
             $memInMB = $totalMemory / 1MB
             $mbMemSize = [uint64]$mbMemSize
             if ($mbMemSize -gt $memInMB)
@@ -721,7 +686,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
     $vmName = $vm.vmName
     $hvServer = $vm.hvServer
     $vhdFilename = $null
-	$parentVhd = GetParentVhd $vm  $xmlData
+	$parentVhd = $null
 
     if (-not $vm.hardware.create -or $vm.hardware.create -ne "true")
     {
@@ -745,7 +710,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         # Create the VM
         #
         LogMsg 0 "Info: Required parameters check done, creating VM..."
-        
+
         $vmGeneration = 1
         if ($vm.hardware.generation) {
             $vmGeneration = [int16]$vm.hardware.generation
@@ -758,7 +723,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 
         # WS 2012, 2008 R2 do not support generation 2 VMs
         $OSInfo = get-wmiobject Win32_OperatingSystem -computerName $vm.hvServer
-        if ( ($OSInfo.Caption -match '.2008 R2.') -or 
+        if ( ($OSInfo.Caption -match '.2008 R2.') -or
              ($OSInfo.Caption -match '.2012 [^R2].')
              )
             {
@@ -780,7 +745,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
                 # Enable Guest integration services - not enabled by default
                 Enable-VMIntegrationService -Name "Guest Service Interface" -vmName $vmName -ComputerName $hvServer
             }
-            
+
         if ($null -eq $newVm) {
             LogMsg 0 "Error: Unable to create the VM named $($vm.vmName)."
             return $false
@@ -809,12 +774,12 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 				$pipePath = "\\.\pipe\${pipeName}"
 			}
 			Set-VMComPort -ComputerName $hvServer -VMName $vmName -Number 2 -Path $pipePath -ErrorAction SilentlyContinue
-			if(-not $?) 
+			if(-not $?)
 			{
 				Write-Error "Error: Unable to set Com Port with the following path: ${pipePath}"
 			}
 		}
-          
+
         #
         # Modify VMs CPU count if user specified a new value
         #
@@ -822,7 +787,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         {
             Set-VMProcessor -VMName $vmName -Count $($vm.hardware.numCPUs) -ComputerName $hvServer
         }
-      
+
         #
         # Modify the VMs memory size of the user specified a new size
         # but only if a new size is present, and it is not equal to
@@ -833,75 +798,14 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             $memSize = [Uint64]$vm.hardware.memsize
             Set-VMMemory -VMName $vmName -StartupBytes $($memSize * 1MB) -ComputerName $hvServer
         }
-		LogMsg 9 "Debug: parentVhd===$($($vm).hardware).parentVhd"
-		LogMsg 9 "Debug: parentVhd===$parentVhd"
-<#
-        $parentVhd = $vm.hardware.parentVhd
-        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)) )
-        {
-			$vhdDir=Join-Path $(Get-Location) "ParentVhds"
-			If((test-path $(Join-Path $vhdDir $parentVhd)))
-			{
-				$parentVhd = Join-Path $vhdDir $parentVhd
-				LogMsg 9 "Debug: parentVhd=$parentVhd"
-			}
-			else
-			{
-				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-				if ($xmlData.Config.global.imageStoreDir)
-				{
-					$vhdDir = $xmlData.Config.global.imageStoreDir
-					if((test-path $(Join-Path $vhdDir $parentVhd)))
-					{
-						$parentVhd = Join-Path $vhdDir $parentVhd
-						LogMsg 9 "Debug: parentVhd=$parentVhd"
-					}
-				}
-				else
-				{
-					LogMsg 0 "Error: Provide a valid vhd path"
-				}
 
-				$parentVhd = Join-Path $vhdDir $parentVhd
-			}
-        }
-        if( -not (test-path $parentVhd))
-		{
-			
-		}
-		else
-		{
-			LogMsg 9 "Debug: '$parentVhd' file exists"
-		}
+        $parentVhd = GetParentVhd $vm  $xmlData
 
-        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)))
-        {
-            $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-            if ($xmlData.Config.global.imageStoreDir)
-            {
-                $vhdDir = $xmlData.Config.global.imageStoreDir
-            }
+        LogMsg 9 "Debug: parentVhd == $parentVhd"
+        LogMsg 9 "Debug: parentVhd is of == $($parentVhd.GetType())"
 
-            # If no specific VHD file is specified, then we either find the latest image as described by a metadata file
-            # Or we find the last written file
-            if (!$parentVhd)
-            {
-                $latestFile = Join-Path $vhdDir "latest"
-                if (Test-Path $latestFile)
-                {
-                    $parentVhd = Get-Content $latestFile
-                }
-                else
-                {
-                    $parentVhd = $(Get-ChildItem $vhdDir | Where-Object { $_.Extension -eq ".vhd" -or $_.Extension -eq ".vhdx"} | Sort LastWriteTime | Select -Last 1).Name
-                }
-            }
+        # If parent VHD is remote, copy it to local VHD directory
 
-            $parentVhd = Join-Path $vhdDir $parentVhd
-        }
-#>
-            # If parent VHD is remote, copy it to local VHD directory
-        
         $uriPath = New-Object -TypeName System.Uri -ArgumentList $parentVhd
         if ($uriPath.IsUnc)
         {
@@ -940,7 +844,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         {
             #
             # Create differencing boot disk.
-            # If the parentVhd is an Absolute path, it will be use as is. 
+            # If the parentVhd is an Absolute path, it will be use as is.
             # If parentVhd is a relative path, then prepent the HyperV servers default VHD directory.
             #
             $vhdName = "${vmName}_diff.vhd"
@@ -951,24 +855,26 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             else
             {
 				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-
             }
 			$vhdFilename = Join-Path $vhdDir  $vhdName
 			$vhdFilenameNetPath = "\\" + $hvServer + "\" + $vhdFilename.Replace(":","$")
-            LogMsg 9 "Info: vhdDir=$vhdDir"
-            LogMsg 9 "Info: vhdFilename=$vhdFilename"
-            LogMsg 9 "Info: vhdFilenameNetPath=$vhdFilenameNetPath"
+            LogMsg 9 "Debug: vhdDir=$vhdDir"
+            LogMsg 9 "Debug: vhdFilename=$vhdFilename"
+            LogMsg 9 "Debug: vhdFilenameNetPath=$vhdFilenameNetPath"
             LogMsg 1 "Info: Using '$parentVhd' as parentVhd"
-            
+
             # Check if differencing boot disk exists, and if yes, delete it
             if(Test-Path $vhdFilenameNetPath) {
                 Remove-Item -Path $vhdFilenameNetPath -Force
+                $parentVhd = GetParentVhd $vm  $xmlData
+				LogMsg 9 "Debug: 'parentVhd' updated to'$parentVhd'"
             }
             #
             #Create the boot .vhd
             #
             $bootVhd = New-VHD -Path $vhdFilename -ParentPath $parentVhd -ComputerName $hvServer
 			LogMsg 9 "Debug: bootVhd=$bootVhd"
+			LogMsg 9 "Debug: parentVhd=$parentVhd"
             if (-not $bootVhd)
             {
                 LogMsg 0 "Error: Failed to create $vhdFilename using parent $parentVhd for VM ${vmName}"
@@ -977,18 +883,18 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
                 {
                     LogMsg 0 "Error: The file already exists"
                 }
-    
+
                 DeleteVmAndVhd $vmName $hvServer $null
                 return $false
             }
         }
-       
+
         #
         # Add a drive to IDE 0, port 0
         #
-        $Error.Clear() 
-        Add-VMHardDiskDrive $vmName -Path $vhdFilename -ControllerNumber 0 -ControllerLocation 0 -ComputerName $hvServer 
-        #$newDrive = Add-VMDrive $vmName -path $vhdFilename -ControllerID 0  -LUN 0 -server $hvServer 
+        $Error.Clear()
+        Add-VMHardDiskDrive $vmName -Path $vhdFilename -ControllerNumber 0 -ControllerLocation 0 -ComputerName $hvServer
+        #$newDrive = Add-VMDrive $vmName -path $vhdFilename -ControllerID 0  -LUN 0 -server $hvServer
 
         if ($Error.Count -gt 0)
         {
@@ -1004,16 +910,16 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         # If a data disk was specified...
         #
-        $Error.Clear() 
+        $Error.Clear()
 
         $dataVhd = $vm.hardware.DataVhd
         if ($dataVhd)
         {
             $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
             $dataVhdFile = Join-Path $vhdDir $dataVhd
-       
+
             Add-VMHardDiskDrive $vmName -Path $dataVhdFile -ControllerNumber 0 -ControllerLocation 1 -ComputerName $hvServer
-       
+
             if ($Error.Count -gt 0)
             {
                 "Error: Failed to attach .vhd file '$vhdFilename' to VM ${vmName}"
@@ -1094,9 +1000,9 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
                 LogMsg 0 "Error: no NICs were added to VM ${vmName}. The VM was not created"
                 DeleteVmAndVhd $vmName $hvServer $vhdFilename
                 return $False
-            } 
+            }
         }
-        
+
         #
         # Configure VM for High Availability
         #
@@ -1109,9 +1015,9 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
                 return $False
             }
         }
-        
+
         LogMsg 0 "Info: Virtual Machine '${vmName}' created successfully!"
-        $retVal = $True       
+        $retVal = $True
     }
 
     #
@@ -1123,6 +1029,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 
 function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 {
+    $BootTime = 0
     LogMsg 0 "Info: Getting IPv4 address of '$($vm.vmName)'"
     $timeout = 180
     while ($timeout -gt 0)
@@ -1138,6 +1045,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 
 	    start-sleep -seconds 1
 	    $timeout -= 1
+	    $BootTime += 1
     }
 
     #
@@ -1146,7 +1054,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
     if ($timeout -eq 0)
     {
 	    LogMsg 0 "Warn : $($vm.vmName) never reached Hyper-V status Running - timed out`n       Terminating test run."
-	
+
 	    $v = Get-VM $vm.vmName -ComputerName $vm.hvServer
 	    Stop-VM $v -ComputerName $vm.hvServer | out-null
 	    $vm.currentTest = "done"
@@ -1154,9 +1062,8 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
     }
     else
     {
-	    $MaxTimeout = 180
-	    $timeout = 0
-	    while ($timeout -lt $MaxTimeout)
+	    $timeout = 180
+        while ($timeout -gt 0)
 	    {
 		    #
 		    # Check if the VM is in the Hyper-v Running state
@@ -1165,15 +1072,15 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 		    if ($IPv4 )
 		    {
 			    $vm.ipv4=$IPv4
-			    #Write-Host ""
 			    LogMsg 0 "`nInfo: IP of $($vm.vmName): $($vm.ipv4)"
-			    LogMsg 3 "Info: Got IP address in '$timeout seconds'"
-                return $IPv4
+			    LogMsg 0 "Info: VirtualMachine took '$BootTime' seconds to boot"
+			    return $IPv4
 		    }
 		    Write-Host "." -NoNewline
 
 		    start-sleep -seconds 1
-		    $timeout += 1
+		    $timeout -= 1
+            $BootTime += 1
 	    }
 	    Write-Host ""
 
@@ -1182,27 +1089,28 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 	    #
 	    if ($timeout -eq 0)
 	    {
-		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"
-	    } 
+		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"   
+	    }
     }
 }
 
 function CheckDependencies()
 {
+	If(!(test-path $LogFolder))
+	{
+		New-Item -ItemType Directory -Force -Path $LogFolder
+	}
+	
 	LogMsg 0 "Info: Verifying dependencies.."
+	
 	$DependencyArray = @(".\bin\dos2unix.exe", ".\bin\plink.exe", "bin\pscp.exe")
-	For ($i=0; $i -lt $DependencyArray.Length; $i++) 
+	For ($i=0; $i -lt $DependencyArray.Length; $i++)
 	{
 		if (-not (Test-Path $DependencyArray[$i]))
 		{
 			LogMsg 0 "Error: `$DependencyArray[$i]` file doesn't exist`n Exitting now..."
 			exit exitStatus
 		}
-	}
-
-	If(!(test-path $LogDir))
-	{
-		  New-Item -ItemType Directory -Force -Path $LogDir
 	}
 
 	if (! $xmlFile)
@@ -1216,14 +1124,25 @@ function CheckDependencies()
 		LogMsg 0 "Error: The XML file '${xmlFile}' does not exist."
 		exit $exitStatus
 	}
+	LogMsg 0 "Done"
 }
 
+function UploadFiles ([System.Xml.XmlElement] $vm)
+{
+    RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\scripts\*" -username $vm.userName -password $vm.passWord -upload
+    RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\files\*" -username $vm.userName -password $vm.passWord -upload
+}
+
+function DownloadFiles ([System.Xml.XmlElement] $vm)
+{
+	RemoteCopy -download -downloadFrom $vm.ipv4 -files "*" -downloadTo $LogFolder -port 22 -username $vm.userName -password $vm.passWord
+}			
 #######################################################################
 #
 # Main script body
 #
 #######################################################################
-
+$TimeElapsed = [Diagnostics.Stopwatch]::StartNew()
 CheckDependencies
 #
 # Parse the .xml file
@@ -1280,7 +1199,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 	{
 		$vmStartStatus = DoSystemStarting $vm $xmlData
 		$VMIP=GetVMIPv4Address $vm $xmlData
-		
+
 		if (-not $VMIP)
 		{
 			LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
@@ -1289,14 +1208,18 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 		}
 		else
 		{
-			RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\scripts\$($xmlData.Config.VMs.VM.script)" -username $vm.userName -password $vm.passWord -upload
-			RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($xmlData.Config.VMs.VM.script)" -runAsSudo
-			RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "ifconfig" -runAsSudo
-			RemoteCopy -download -downloadFrom $vm.ipv4 -files "LogFileRemote.log" -downloadTo $LogDir -port 22 -username $vm.userName -password $vm.passWord
-		}	
+            UploadFiles $vm
+            RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($xmlData.Config.VMs.VM.script)" -runAsSudo
+			DownloadFiles $vm
+		}
 	}else{
 		exit $exitStatus
 	}
 }
+
+$TimeElapsed.Stop()
+LogMsg 1 "Info: Total execution time: $($($($TimeElapsed).Elapsed).TotalSeconds) Seconds"
+LogMsg 1 "Logs are located at '$LogFolder'" "White" "Black"
+
 $exitStatus=0
 exit $exitStatus

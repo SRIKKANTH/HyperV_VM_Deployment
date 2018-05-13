@@ -293,7 +293,7 @@ function RunICTests([XML] $xmlConfig, [string] $collect, [string] $noshutdown)
         return
     }
 
-    LogMsg 9 "Info : RunICTests($($vm.vmName))"
+    LogMsg 9 "Debug: RunICTests($($vm.vmName))"
 
     #
     # Verify the Putty utilities exist.  Without them, we cannot talk to the Linux VM.
@@ -486,7 +486,7 @@ function ResetVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : ResetVM( $($vm.vmName) )"
+    LogMsg 9 "Debug: ResetVM( $($vm.vmName) )"
 
     #
     # Stop the VM.  If the VM is in a state other than running,
@@ -601,7 +601,7 @@ function DoStateMachine([XML] $xmlConfig, [string] $collect, [string] $noshutdow
         DoStateMachine $xmlData
     #>
 
-    LogMsg 9 "Info : Entering DoStateMachine()"
+    LogMsg 9 "Debug: Entering DoStateMachine()"
 
     $done = $false
     while(! $done)
@@ -807,7 +807,7 @@ function DoSystemDown([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : Entering DoSystemDown( $($vm.vmName) )"
+    LogMsg 9 "Debug: Entering DoSystemDown( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -937,7 +937,7 @@ function DoApplyCheckpoint([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : Entering DoApplyCheckpoint( $($vm.vmName) )"
+    LogMsg 9 "Debug: Entering DoApplyCheckpoint( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -953,7 +953,7 @@ function DoApplyCheckpoint([System.Xml.XmlElement] $vm, [XML] $xmlData)
         # Do not need to recover from RevertDefaultSnapshot
         if (-not $testData.RevertDefaultSnapshot -or $testData.RevertDefaultSnapshot -eq "False")
         {
-            LogMsg 9 "Info : noCheckpoint is not configured or set to True."
+            LogMsg 9 "Debug: noCheckpoint is not configured or set to True."
             if (-not (VerifyTestResourcesExist $vm $testData))
             {
                 #
@@ -1072,7 +1072,7 @@ function DoRunSetupScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoRunSetupScript( $($vm.vmName) )"
+    LogMsg 9 "Debug: DoRunSetupScript( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1190,7 +1190,7 @@ function DoRunSetupScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
             }
             else
             {
-                LogMsg 9 "INFO : $($vm.vmName) does not have setup script defined for test $($vm.currentTest)"
+                LogMsg 9 "Debug: $($vm.vmName) does not have setup script defined for test $($vm.currentTest)"
             }
             UpdateState $vm $StartSystem
         }
@@ -1236,7 +1236,7 @@ function DoStartSystem([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoStartSystem( $($vm.vmName) )"
+    LogMsg 9 "Debug: DoStartSystem( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1328,7 +1328,7 @@ function DoSystemStarting([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : Entering DoSystemStarting( $($vm.vmName) )"
+    LogMsg 9 "Debug: Entering DoSystemStarting( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1448,7 +1448,7 @@ function DoSlowSystemStarting([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : Entering DoSlowSystemStarting()"
+    LogMsg 9 "Debug: Entering DoSlowSystemStarting()"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1508,7 +1508,7 @@ function DoDiagnoseHungSystem([System.Xml.XmlElement] $vm, [XML] $xmlData, [Stri
         return
     }
 
-    LogMsg 9 "Info : Entering DoDiagnoseHungSystem()"
+    LogMsg 9 "Debug: Entering DoDiagnoseHungSystem()"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1688,7 +1688,7 @@ function DoSystemUp([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoSystemUp($($vm.vmName))"
+    LogMsg 9 "Debug: DoSystemUp($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1710,7 +1710,7 @@ function DoSystemUp([System.Xml.XmlElement] $vm, [XML] $xmlData)
     # Send a "no-op command to the VM and assume this is the first SSH connection,
     # so pipe a 'y' respone into plink
     #
-    LogMsg 9 "INFO : Call: echo y | bin\plink -i ssh\$sshKey root@$hostname exit"
+    LogMsg 9 "Debug: Call: echo y | bin\plink -i ssh\$sshKey root@$hostname exit"
     echo y | bin\plink -i ssh\${sshKey} root@${hostname} exit
 
     #
@@ -1730,7 +1730,7 @@ function DoSystemUp([System.Xml.XmlElement] $vm, [XML] $xmlData)
     # Determine the VMs OS
     #
     $os = [string](GetOSType $vm)
-    LogMsg 9 "INFO : The OS type is $os"
+    LogMsg 9 "Debug: The OS type is $os"
 
     If ($vm.role.ToLower().StartsWith("sut"))
     {
@@ -1782,7 +1782,7 @@ function DoPushTestFiles([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoPushTestFiles($($vm.vmName))"
+    LogMsg 9 "Debug: DoPushTestFiles($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -1823,7 +1823,7 @@ function DoPushTestFiles([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($xmlData.config.global.testParams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding glogal test params"
+            LogMsg 9 "Debug: $($vm.vmName) Adding glogal test params"
             foreach ($param in $xmlData.config.global.testParams.param)
             {
                 ($param) | out-file -encoding ASCII -append -filePath $constFile
@@ -1835,7 +1835,7 @@ function DoPushTestFiles([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($testdata.testparams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding testparmas for test $($testData.testName)"
+            LogMsg 9 "Debug: $($vm.vmName) Adding testparmas for test $($testData.testName)"
             foreach ($param in $testdata.testparams.param)
             {
                 ($param) | out-file -encoding ASCII -append -filePath $constFile
@@ -1847,7 +1847,7 @@ function DoPushTestFiles([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($vm.testparams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding VM specific params"
+            LogMsg 9 "Debug: $($vm.vmName) Adding VM specific params"
             foreach ($param in $vm.testparams.param)
             {
                 ($param) | out-file -encoding ASCII -append -filePath $constFile
@@ -1860,7 +1860,7 @@ function DoPushTestFiles([System.Xml.XmlElement] $vm, [XML] $xmlData)
     #
     if ($vm.ipv4)
     {
-        LogMsg 9 "Info : $($vm.vmName) Adding ipv4=$($vm.ipv4)"
+        LogMsg 9 "Debug: $($vm.vmName) Adding ipv4=$($vm.ipv4)"
         "ipv4=$($vm.ipv4)" | out-file -encoding ASCII -append -filePath $constFile
     }
 
@@ -2044,7 +2044,7 @@ function DoRunPreTestScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoRunPreTestScript( $($vm.vmName) )"
+    LogMsg 9 "Debug: DoRunPreTestScript( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2104,7 +2104,7 @@ function DoRunPreTestScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
                 }
                 else
                 {
-                    LogMsg 9 "Info: $($vm.vmName) entered RunPreTestScript with no preTest script defined for test $($vm.currentTest)"
+                    LogMsg 9 "Debug: $($vm.vmName) entered RunPreTestScript with no preTest script defined for test $($vm.currentTest)"
                 }
             }
             else
@@ -2128,7 +2128,7 @@ function DoRunPreTestScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
             }
             else
             {
-                LogMsg 9 "Info : NonSUT VM: $($vm.vmName) entered RunPreTestScript with no postStartConfig script defined"
+                LogMsg 9 "Debug: NonSUT VM: $($vm.vmName) entered RunPreTestScript with no postStartConfig script defined"
             }
 
             UpdateState $vm $Finished
@@ -2164,7 +2164,7 @@ function DoStartTest([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoStartTest($($vm.vmName))"
+    LogMsg 9 "Debug: DoStartTest($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2327,7 +2327,7 @@ function DoTestStarting([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoTestStarting($($vm.vmName))"
+    LogMsg 9 "Debug: DoTestStarting($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2399,7 +2399,7 @@ function DoTestRunning([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoTestRunning($($vm.vmName))"
+    LogMsg 9 "Debug: DoTestRunning($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2553,7 +2553,7 @@ function DoCollectLogFiles([System.Xml.XmlElement] $vm, [XML] $xmlData, [string]
         return
     }
 
-    LogMsg 9 "Info : DoCollectLogFiles($($vm.vmName))"
+    LogMsg 9 "Debug: DoCollectLogFiles($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2635,7 +2635,7 @@ function DoCollectLogFiles([System.Xml.XmlElement] $vm, [XML] $xmlData, [string]
     {
         foreach ($file in $testData.uploadFiles.file)
         {
-            LogMsg 9 "Info : Get '${file}' from VM $($vm.vmName)."
+            LogMsg 9 "Debug: Get '${file}' from VM $($vm.vmName)."
             $dstFile = "$($vm.vmName)_${currentTest}_${file}"
             if (-not (GetFileFromVM $vm $file "${testDir}\${dstFile}") )
             {
@@ -2700,7 +2700,7 @@ function DoRunPostTestScript([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoRunPostScript( $($vm.vmName) )"
+    LogMsg 9 "Debug: DoRunPostScript( $($vm.vmName) )"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2784,7 +2784,7 @@ function DoDetermineReboot([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoDetermineReboot($($vm.vmName))"
+    LogMsg 9 "Debug: DoDetermineReboot($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -2956,7 +2956,7 @@ function DoShutdownSystem([System.Xml.XmlElement] $vm, [XML] $xmlData, [string] 
          LogMsg 0 "Info : NoShutdown parameter is True. Skipping DoShutdownSystem($($vm.vmName))"
      }
     else {
-        LogMsg 9 "Info : DoShutdownSystem($($vm.vmName))"
+        LogMsg 9 "Debug: DoShutdownSystem($($vm.vmName))"
     }
 
     if (-not $xmlData -or $xmlData -isnot [XML])
@@ -3003,7 +3003,7 @@ function DoShuttingDown([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoShuttingDown($($vm.vmName))"
+    LogMsg 9 "Debug: DoShuttingDown($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3081,7 +3081,7 @@ function DoRunCleanUpScript($vm, $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoRunCleanupScript($($vm.vmName))"
+    LogMsg 9 "Debug: DoRunCleanupScript($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3174,7 +3174,7 @@ function DoForceShutDown([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoForceShutdown($($vm.vmName))"
+    LogMsg 9 "Debug: DoForceShutdown($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3300,7 +3300,7 @@ function DoStartPS1Test([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoStartPS1Test($($vm.vmName))"
+    LogMsg 9 "Debug: DoStartPS1Test($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3388,7 +3388,7 @@ function DoWaitForDependencyVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoWaitForDependencyVM($($vm.vmName))"
+    LogMsg 9 "Debug: DoWaitForDependencyVM($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3452,7 +3452,7 @@ function DoPS1TestRunning ([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoPS1TestRunning($($vm.vmName))"
+    LogMsg 9 "Debug: DoPS1TestRunning($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {
@@ -3519,7 +3519,7 @@ function DoPS1TestCompleted ([System.Xml.XmlElement] $vm, [XML] $xmlData)
         return
     }
 
-    LogMsg 9 "Info : DoPS1TestCompleted($($vm.vmName))"
+    LogMsg 9 "Debug: DoPS1TestCompleted($($vm.vmName))"
 
     if (-not $xmlData -or $xmlData -isnot [XML])
     {

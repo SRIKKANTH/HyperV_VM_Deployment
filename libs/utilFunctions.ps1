@@ -31,6 +31,63 @@
     None.
 #>
 
+########################################################################
+#
+# LogMsg()
+#
+########################################################################
+function LogMsg([int]$level, [string]$msg, [string]$BackGround, [string]$ForeGround)  {
+    <#
+    .Synopsis
+        Write a message to the log file and the console.
+    .Description
+        Add a time stamp and write the message to the test log.  In
+        addition, write the message to the console.  Color code the
+        text based on the level of the message.
+    .Parameter level
+        Debug level of the message
+    .Parameter msg
+        The message to be logged
+    .Example
+        LogMsg 3 "This is a test"
+    #>
+
+    if ($level -le $dbgLevel)
+    {
+        $now = [Datetime]::Now.ToString("MM/dd/yyyy HH:mm:ss : ")
+        ($now + $msg) | out-file -encoding ASCII -append -filePath $logfile
+		if ( $ForeGround -eq "" )
+		{
+			$ForeGround = "Gray"
+			if ( $msg.StartsWith("Error"))
+			{
+				$ForeGround = "red"
+			}
+			elseif ($msg.StartsWith("Warn"))
+			{
+				$ForeGround = "Yellow"
+			}
+			elseif ($msg.StartsWith("Debug"))
+			{
+				$ForeGround = "Green"
+			}
+			else
+			{
+				$ForeGround = "White"
+			}
+		}
+		if ($BackGround -ne "")
+		{
+			write-host -f $ForeGround -b $BackGround "$msg"
+		}
+		else
+		{
+			write-host -f $ForeGround "$msg"
+		}
+    }
+}
+
+
 #####################################################################
 #
 # GetJUnitXML
@@ -51,7 +108,7 @@ function GetJUnitXML()
     .Example
         GetJUnitXML
     #>
-    LogMsg 6 ("Info :    GetJUnitXML()")
+    LogMsg 9 ("Debug: Inside GetJUnitXML()")
     $template = @'
 <testsuites>
 <testsuite name="" timestamp="">
@@ -516,8 +573,8 @@ function HasItBeenTooLong([String] $timestamp, [Int] $timeout)
 
     if ($tooLong -eq -1)
     {
-        LogMsg 9 "INFO : The current task is started at $timestamp"
-        LogMsg 9 "INFO : Timeout is set to $timeout seconds"
+        LogMsg 9 "Debug: The current task is started at $timestamp"
+        LogMsg 9 "Debug: Timeout is set to $timeout seconds"
         $retVal = $true
     }
 
@@ -551,7 +608,7 @@ function GetNextTest([System.Xml.XmlElement] $vm, [xml] $xmlData)
     .Example
         GetNextTest $myVM
     #>
-    LogMsg 9 "Info :    GetNextText($($vm.vmName))"
+    LogMsg 9 "Debug:    GetNextText($($vm.vmName))"
     LogMsg 9 "Debug:      vm.currentTest = $($vm.currentTest)"
     LogMsg 9 "Debug:      vm.suite = $($vm.suite)"
 
@@ -1575,7 +1632,7 @@ function CreateTestParamString([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($xmlData.config.global.testParams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding glogal test params"
+            LogMsg 9 "Debug: $($vm.vmName) Adding glogal test params"
             foreach ($param in $xmlData.config.global.testParams.param)
             {
                 $tp += $param + ";"
@@ -1587,7 +1644,7 @@ function CreateTestParamString([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($testdata.testParams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding testparmas for test $($testData.testName)"
+            LogMsg 9 "Debug: $($vm.vmName) Adding testparmas for test $($testData.testName)"
             foreach ($param in $testdata.testParams.param)
             {
                 $tp += $param + ";"
@@ -1599,7 +1656,7 @@ function CreateTestParamString([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         if ($vm.testParams)
         {
-            LogMsg 9 "Info : $($vm.vmName) Adding VM specific params"
+            LogMsg 9 "Debug: $($vm.vmName) Adding VM specific params"
             foreach ($param in $vm.testParams.param)
             {
                 $tp += $param + ";"

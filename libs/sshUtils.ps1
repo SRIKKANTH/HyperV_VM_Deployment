@@ -2,14 +2,13 @@
 {
 	LogMsg 0 "Error: $($msg)"
 }
-$LogDir=".\Logs"
-Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $username, $password, [switch]$upload, [switch]$download, [switch]$usePrivateKey, [switch]$doNotCompress) #Removed XML config
+
+Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $username, $password, [switch]$upload, [switch]$download, [switch]$usePrivateKey, [switch]$doNotCompress) #Removed XML config
 {
 	$retry=1
 	$maxRetry=20
 	if($upload)
 	{
-#LogMsg 0 "Info: Uploading the files"
 		if ($files)
 		{
 			$fileCounter = 0
@@ -25,7 +24,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 					if ( ( $f.Split(".")[$f.Split(".").count-1] -eq "sh" ) -or ( $f.Split(".")[$f.Split(".").count-1] -eq "py" ) )
 					{
 						$out = .\bin\dos2unix.exe $f 2>&1
-						LogMsg 9 "Info: $out"
+						LogMsg 9 "Debug: $out"
 					}
 					$fileCounter ++
 				}
@@ -48,7 +47,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 							$CompressCount += 1
 						}
 					}
-				}				
+				}
 				if ( $CompressCount -eq $fileCounter )
 				{
 					$retry=1
@@ -71,7 +70,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 							sleep -Milliseconds 100
 							$uploadJobStatus = Get-Job -Id $uploadJob.Id
 							$uploadTimout = $false
-							while (( $uploadJobStatus.State -eq "Running" ) -and ( !$uploadTimout ))					
+							while (( $uploadJobStatus.State -eq "Running" ) -and ( !$uploadTimout ))
 							{
 								Write-Host "." -NoNewline
 								$now = Get-Date
@@ -117,7 +116,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 					{
 						$out = RunLinuxCmd -username $username -password $password -ip $uploadTo -port $port -command "tar -xf $tarFileName" -runAsSudo
 					}
-					
+
 				}
 				else
 				{
@@ -156,7 +155,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 							sleep -Milliseconds 100
 							$uploadJobStatus = Get-Job -Id $uploadJob.Id
 							$uploadTimout = $false
-							while (( $uploadJobStatus.State -eq "Running" ) -and ( !$uploadTimout ))					
+							while (( $uploadJobStatus.State -eq "Running" ) -and ( !$uploadTimout ))
 							{
 								Write-Host "." -NoNewline
 								$now = Get-Date
@@ -225,7 +224,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						sleep -Milliseconds 100
 						$downloadJobStatus = Get-Job -Id $downloadJob.Id
 						$downloadTimout = $false
-						while (( $downloadJobStatus.State -eq "Running" ) -and ( !$downloadTimout ))					
+						while (( $downloadJobStatus.State -eq "Running" ) -and ( !$downloadTimout ))
 						{
 							Write-Host "." -NoNewline
 							$now = Get-Date
@@ -248,11 +247,13 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						$curDir = $PWD
 						$downloadStatusRandomFile = "$LogDir\DownloadStatusFile" + (Get-Random -Maximum 9999 -Minimum 1111) + ".txt"
 						$downloadStartTime = Get-Date
+						
 						$downloadJob = Start-Job -ScriptBlock { $curDir=$args[0];$password=$args[1];$port=$args[2];$testFile=$args[3];$username=$args[4];${downloadFrom}=$args[5];$downloadTo=$args[6];$downloadStatusRandomFile=$args[7]; cd $curDir; Set-Content -Value "1" -Path $args[6]; ; echo y | .\bin\pscp -pw $password -q -P $port $username@${downloadFrom}:$testFile $downloadTo ; Set-Content -Value $LASTEXITCODE -Path $downloadStatusRandomFile;} -ArgumentList $curDir,$password,$port,$testFile,$username,${downloadFrom},$downloadTo,$downloadStatusRandomFile
+						
 						sleep -Milliseconds 100
 						$downloadJobStatus = Get-Job -Id $downloadJob.Id
 						$downloadTimout = $false
-						while (( $downloadJobStatus.State -eq "Running" ) -and ( !$downloadTimout ))					
+						while (( $downloadJobStatus.State -eq "Running" ) -and ( !$downloadTimout ))
 						{
 							Write-Host "." -NoNewline
 							$now = Get-Date
@@ -269,9 +270,13 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						Remove-Item -Force $downloadStatusRandomFile | Out-Null
 						Remove-Job -Id $downloadJob.Id -Force | Out-Null
 					}
-					if(($returnCode -ne 0) -and ($retry -ne $maxRetry))
+					if(($returnCode -eq 0) -or ($testFile -eq '*'))
 					{
-						LogMsg 0 "Warn: Error in download, Attempt $retry. Retrying for download"
+						LogMsg 0 "Info: Download Success after $retry Attempt"
+						$retry=$maxRetry+1
+					}elseif(($returnCode -ne 0) -and ($retry -ne $maxRetry))
+					{
+						LogMsg 0 "Warn: Error in download, Attempt $retry. Retrying for download(returnCode=$returnCode)"
 						$retry=$retry+1
 					}
 					elseif(($returnCode -ne 0) -and ($retry -eq $maxRetry))
@@ -279,11 +284,6 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port, $files, $usern
 						Write-Host "Error in download after $retry Attempt,Hence giving up"
 						$retry=$retry+1
 						Throw "Error in download after $retry Attempt,Hence giving up."
-					}
-					elseif($returnCode -eq 0)
-					{
-						LogMsg 0 "Info: Download Success after $retry Attempt"
-						$retry=$maxRetry+1
 					}
 				}
 			}
@@ -318,7 +318,7 @@ Function WrapperCommandsToFile([string] $username,[string] $password,[string] $i
     }
 }
 
-Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string] $command, [int] $port, [switch]$runAsSudo, [Boolean]$WriteHostOnly, [Boolean]$NoLogsPlease, [switch]$ignoreLinuxExitCode, [int]$runMaxAllowedTime = 300, [switch]$RunInBackGround)
+Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string] $command, [int] $port=22, [switch]$runAsSudo, [Boolean]$WriteHostOnly, [Boolean]$NoLogsPlease, [switch]$ignoreLinuxExitCode, [int]$runMaxAllowedTime = 300, [switch]$RunInBackGround)
 {
 	if ($detectedDistro -ne "COREOS" )
 	{
@@ -328,7 +328,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 	$maxRetryCount = 20
 	$currentDir = $PWD.Path
 	$RunStartTime = Get-Date
-	
+
 	if($runAsSudo)
 	{
 		$plainTextPassword = $password.Replace('"','');
@@ -339,7 +339,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 		}
 		else
 		{
-              
+
 			$linuxCommand = "`"echo $plainTextPassword | sudo -S bash -c `'bash runtest.sh ; echo AZURE-LINUX-EXIT-CODE-`$?`' `""
 			$logCommand = "`"echo $plainTextPassword | sudo -S $command`""
 		}
@@ -349,7 +349,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 		if ( $detectedDistro -eq "COREOS" )
 		{
 			$linuxCommand = "`"export PATH=/usr/share/oem/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/oem/bin:/opt/bin && $command && echo AZURE-LINUX-EXIT-CODE-`$? || echo AZURE-LINUX-EXIT-CODE-`$?`""
-			$logCommand = "`"export PATH=/usr/share/oem/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/oem/bin:/opt/bin && $command`""		
+			$logCommand = "`"export PATH=/usr/share/oem/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/share/oem/bin:/opt/bin && $command`""
 		}
 		else
 		{
@@ -363,7 +363,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 	$attemptswot = 0
 	$notExceededTimeLimit = $true
 	$isBackGroundProcessStarted = $false
-    
+
 	while ( ($returnCode -ne 0) -and ($attemptswt -lt $maxRetryCount -or $attemptswot -lt $maxRetryCount) -and $notExceededTimeLimit)
 	{
 		if ($runwithoutt -or $attemptswt -eq $maxRetryCount)
@@ -459,7 +459,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 					}
 				}
 			}
-			
+
 			$debugLines = Get-Content $LogDir\$randomFileName
 			if($debugLines)
 			{
@@ -479,7 +479,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 			}
 			else
 			{
-				Remove-Job $runLinuxCmdJob 
+				Remove-Job $runLinuxCmdJob
 				if (!$isBackGroundProcessStarted)
 				{
 					LogErr "Failed to start process in background.."
@@ -514,7 +514,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 					}
 				}
 			}
-			Remove-Item $LogDir\$randomFileName -Force | Out-Null   
+			Remove-Item $LogDir\$randomFileName -Force | Out-Null
 		}
 		else
 		{
@@ -546,7 +546,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 					$debugOutput += "$debugString`n"
 				}
 				Write-Progress -Activity "Attempt : $attemptswot+$attemptswt : Executing $logCommand on $ip : $port" -Status "Timeout in $($RunMaxAllowedTime - $RunElaplsedTime) seconds.." -Id 87678 -PercentComplete (($RunElaplsedTime/$RunMaxAllowedTime)*100) -CurrentOperation "SSH ACTIVITY : $debugString"
-                #Write-Host "Attempt : $attemptswot+$attemptswt : Executing $logCommand on $ip : $port" 
+                #Write-Host "Attempt : $attemptswot+$attemptswt : Executing $logCommand on $ip : $port"
 				$RunCurrentTime = Get-Date
 				$RunDiffTime = $RunCurrentTime - $RunStartTime
 				$RunElaplsedTime =  $RunDiffTime.TotalSeconds
@@ -588,9 +588,9 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 			}
 			Write-Progress -Activity "Attempt : $attemptswot+$attemptswt : Executing $logCommand on $ip : $port" -Status $runLinuxCmdJob.State -Id 87678 -SecondsRemaining ($RunMaxAllowedTime - $RunElaplsedTime) -Completed
 			#Write-Host "Attempt : $attemptswot+$attemptswt : Executing $logCommand on $ip : $port"
-            Remove-Job $runLinuxCmdJob 
+            Remove-Job $runLinuxCmdJob
 			Remove-Item $LogDir\$randomFileName -Force | Out-Null
-			if ($LinuxExitCode -imatch "AZURE-LINUX-EXIT-CODE-0") 
+			if ($LinuxExitCode -imatch "AZURE-LINUX-EXIT-CODE-0")
 			{
 				$returnCode = 0
 				LogMsg 0 "Info: $command executed successfully in $RunElaplsedTime seconds." -WriteHostOnly $WriteHostOnly -NoLogsPlease $NoLogsPlease
