@@ -6,6 +6,21 @@
 #
 #
 
+LogFile="LogFile.log"
+StatusFile="StatusFile.log"
+echo "" > $LogFile
+
+function LogMsg ()
+{
+	tee >> $LogFile
+}
+
+function UpdateStatus ()
+{
+	tee > $StatusFile
+}
+
+
 function get_lis_version ()
 {
     lis_version=`modinfo hv_vmbus | grep "^version:"| awk '{print $2}'`
@@ -440,4 +455,48 @@ upload_files_to_blob_storage ()
 		--destination $blob_storage_url/$filename \
 		--dest-key $key
 
+}
+
+function get_service_status ()
+{
+	ServiceName=$1
+	Status=""
+	if [ "x"`which service` != "x" ]
+    then
+		CmdOutPut=`service $ServiceName status`
+        Status=`service $ServiceName status | grep Active| awk '{print $3}' | sed s/[\(\)]//g`
+    elif [ "x"`which systemctl` != "x" ]
+    then
+		CmdOutPut=`systemctl status $ServiceName`
+		Status=`systemctl status $ServiceName | grep Active| awk '{print $3}' | sed s/[\(\)]//g`
+    else
+		Status="Unknown"
+    fi
+
+    if [ $Status == "dead" ]
+    then
+		if [ `echo $CmdOutPut| grep "not-found"|wc -l` -eq 1 ]
+		then
+			Status="ServiceNotFound"
+		fi
+    fi
+	echo $Status
+}
+
+function set_service_status ()
+{
+	ServiceName=$1 
+	Status=$2
+	if [ "x"`which service` != "x" ]
+    then
+		service $ServiceName $Status
+		check_exit_status "service $ServiceName $Status"
+    elif [ "x"`which systemctl` != "x" ]
+    then
+		systemctl $Status $ServiceName
+		check_exit_status "systemctl $Status $ServiceName"
+    else
+		Status="Unknown"
+    fi
+	echo "Currenr status of service $ServiceName:" `GetServiceStatus $ServiceName`
 }

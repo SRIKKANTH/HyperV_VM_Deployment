@@ -1135,7 +1135,15 @@ function UploadFiles ([System.Xml.XmlElement] $vm)
 
 function DownloadFiles ([System.Xml.XmlElement] $vm)
 {
-	RemoteCopy -download -downloadFrom $vm.ipv4 -files "*" -downloadTo $LogFolder -port 22 -username $vm.userName -password $vm.passWord
+	$VMLogDownloadFolder = $(Join-Path $LogFolder $vm.vmName)
+	
+	If( -not (test-path $VMLogDownloadFolder))
+	{
+		New-Item -ItemType Directory -Force -Path $VMLogDownloadFolder | out-null
+		LogMsg 9 "Debug: parentVhd=$parentVhd"
+	}
+
+	RemoteCopy -download -downloadFrom $vm.ipv4 -files "*" -downloadTo $VMLogDownloadFolder -port 22 -username $vm.userName -password $vm.passWord
 }			
 #######################################################################
 #
