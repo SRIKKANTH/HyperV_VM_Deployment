@@ -13,7 +13,7 @@
 		   <numCPUs>2</numCPUs>
 		   <memSize>1024</memSize>
 		   <disableDiff>false</disableDiff>
-		   <parentVhd>D:\Software\ISO\Ubuntu1604.vhd</parentVhd>
+		   <parentVhd>Ubuntu1604.vhd</parentVhd>
 		   <nic>VMBUS,ExternalSwitch</nic>
 		   <generation>1</generation>
 		   <secureBoot>false</secureBoot>

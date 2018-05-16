@@ -115,11 +115,21 @@
 
 #>
 
-param([String] $xmlFile)
+param (
+    [String] $xmlFile = "SampleConfig.xml",
+    [switch] $Debug = $false
+)
 
 $dbgLevel_Debug=10
 $dbgLevel_Release=1
-$dbgLevel=$dbgLevel_Debug
+if ($Debug)
+{
+	$dbgLevel=$dbgLevel_Debug
+}
+else
+{
+	$dbgLevel=$dbgLevel_Release
+}
 
 $WorkingDir=(Get-Item -Path ".\").FullName
 $DateString=$((Get-Date).ToString('yyyy_MM_dd_hh_mm_ss'))
@@ -390,14 +400,30 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     #
     if (-not $vm.vmName)
     {
-        LogMsg 0 "Error: VM definition is missing a vmName tag"
+        LogMsg 0 "Error: VM $($vm.vmName) in '$xmlFile' is missing a 'vmName' tag"
         return $False
     }
 
     if (-not $vm.hvServer)
     {
-        LogMsg 0 "Error: VM $($vm.vmName) is missing a hvServer tag"
+        LogMsg 0 "Error: VM $($vm.vmName) in '$xmlFile' is missing a 'hvServer' tag"
         return $False
+    }
+    if (-not $vm.userName)
+    {
+        LogMsg 0 "Error: VM $($vm.vmName) in '$xmlFile' is missing a 'userName' tag"
+        return $False
+    }
+
+    if (-not $vm.passWord)
+    {
+        LogMsg 0 "Error: VM $($vm.vmName) in '$xmlFile' is missing a 'passWord' tag"
+        return $False
+    }
+
+    if (-not $vm.script)
+    {
+        LogMsg 0 "Warn: VM $($vm.vmName) in '$xmlFile' is missing a 'script' tag, **No Scripts will be executed once the VM creation is done.**"
     }
 
     $vmName = $vm.vmName
@@ -410,7 +436,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     if ( $vm.hardware.isCluster -eq "True") {
         Get-Cluster
         if ($? -eq $False){
-            LogMsg 0 "Error: Server $hvServer doesn't have a cluster set up"
+            LogMsg 0 "Error: Server '$hvServer' doesn't have a cluster set up"
             return $False
         }
         $clusterDir = Get-ClusterSharedVolume
@@ -431,10 +457,10 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     $fileInfo = GetRemoteFileInfo $vhdFilename -server $hvServer
     if ($fileInfo)
     {
-        LogMsg 0 "Error: The boot disk .vhd file for VM ${vmName} already exists. VHD = ${vhdFilename}"
+        LogMsg 0 "Error: The boot disk .vhd file for VM '${vmName}' already exists. VHD = ${vhdFilename}"
         return $False
     }
-	
+
     #
     # Make sure the parent .vhd file exists
     #
@@ -457,7 +483,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         $fileInfo = GetRemoteFileInfo $dataVhdFile $hvServer
         if (-not $fileInfo)
         {
-            LogMsg 0 "Error: The parent .vhd file ${dataVhd} does not exist for ${vmName}"
+            LogMsg 0 "Error: The parent .vhd file '${dataVhd}' does not exist for ${vmName}"
             return $False
         }
     }
@@ -473,7 +499,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     {
         if ([int]$($vm.hardware.numCPUs) -lt 1)
         {
-            LogMsg 0 "Warn: The numCPUs for VM ${vmName} is less than 1. numCPUs has been set to 1"
+            LogMsg 0 "Warn: The numCPUs for VM '${vmName}' is less than 1. numCPUs has been set to 1"
             $vm.hardware.numCPUs = "1"
         }
 
@@ -483,7 +509,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         $processors = GWMI Win32_Processor -computer $hvServer
         if (-not $processors)
         {
-            LogMsg 0 "Warn: Unable to determine the number of processors on HyperV server ${hvServer}. numCPUs has been set to 1"
+            LogMsg 0 "Warn: Unable to determine the number of processors on HyperV server '${hvServer}'. numCPUs has been set to 1"
             $vm.hardware.numCPUs = "1"
 
         }
@@ -496,8 +522,10 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
 
             if ($maxCPUs -and [int]$($vm.hardware.numCPUs) -gt $maxCPUs)
             {
-                LogMsg 0 "Warn: The numCPUs for VM ${vmName} is larger than the HyperV server supports (${maxCPUs}). numCPUs has been set to max"
-                $vm.hardware.numCPUs = $maxCPUs
+                LogMsg 0 "Warn: The numCPUs for VM '${vmName}' is larger than the HyperV server supports (${maxCPUs})."
+                $maxCPUs-=1
+                LogMsg 0 "Warn: 'numCPUs' has been set to * $maxCPUs * (leaving 1 for the host)."
+                $vm.hardware.numCPUs = "$maxCPUs"
             }
         }
     }
@@ -570,7 +598,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
             $mbMemSize = [uint64]$mbMemSize
             if ($mbMemSize -gt $memInMB)
             {
-                LogMsg 0 "Warn : The memSize for VM ${vmName} is larger than the HyperV servers physical memory. memSize set to the default size of 512 MB"
+                LogMsg 0 "Warn: The memSize for VM '${vmName}' is larger than the HyperV servers physical memory. memSize set to the default size of 512 MB"
                 $vm.hardware.memSize = "512"
             }
         }
@@ -693,7 +721,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         #
         # The create attribute is missing, or it is not true.
         # So, nothing to do
-        LogMsg 0 "Info : VM ${vmName} does not have a create attribute, or the create attribute is not set to True
+        LogMsg 0 "Info : VM '${vmName}' does not have a create attribute, or the create attribute is not set to True
                   The VM will not be created"
         return $True
     }
@@ -833,12 +861,12 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             $dstDrive = $dstPath.Substring(0,1)
             $dstlocalPath = $dstPath.Substring(3)
             $dstPathNetwork = "\\${hvServer}\${dstDrive}$\${dstlocalPath}"
-            LogMsg 0 "Info: Copying parent vhd from $parentVhd to $dstPathNetwork"
+            LogMsg 0 "Info: Copying parent vhd from '$parentVhd' to '$dstPathNetwork'"
             Copy-Item -Path $parentVhd -Destination $dstPathNetwork -Force
             $parentVhd = $dstPath
         }
         $vhdFilename = $parentVhd
-		LogMsg 9 "Debug: vhdFilename===$vhdFilename"
+		LogMsg 9 "Debug: vhdFilename=$vhdFilename"
         $disableDiff = $vm.hardware.disableDiff -eq "true"
         if (-not $disableDiff)
         {
@@ -1053,7 +1081,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
     #
     if ($timeout -eq 0)
     {
-	    LogMsg 0 "Warn : $($vm.vmName) never reached Hyper-V status Running - timed out`n       Terminating test run."
+	    LogMsg 0 "Warn: $($vm.vmName) never reached Hyper-V status Running - timed out`n       Terminating test run."
 
 	    $v = Get-VM $vm.vmName -ComputerName $vm.hvServer
 	    Stop-VM $v -ComputerName $vm.hvServer | out-null
@@ -1072,7 +1100,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 		    if ($IPv4 )
 		    {
 			    $vm.ipv4=$IPv4
-			    LogMsg 0 "`nInfo: IP of $($vm.vmName): $($vm.ipv4)"
+			    LogMsg 0 "`nInfo: IP of '$($vm.vmName)': '$($vm.ipv4)'"
 			    LogMsg 0 "Info: VirtualMachine took '$BootTime' seconds to boot"
 			    return $IPv4
 		    }
@@ -1089,7 +1117,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 	    #
 	    if ($timeout -eq 0)
 	    {
-		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"   
+		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"
 	    }
     }
 }
@@ -1100,30 +1128,29 @@ function CheckDependencies()
 	{
 		New-Item -ItemType Directory -Force -Path $LogFolder
 	}
-	
+
 	LogMsg 0 "Info: Verifying dependencies.."
-	
-	$DependencyArray = @(".\bin\dos2unix.exe", ".\bin\plink.exe", "bin\pscp.exe")
-	For ($i=0; $i -lt $DependencyArray.Length; $i++)
-	{
-		if (-not (Test-Path $DependencyArray[$i]))
-		{
-			LogMsg 0 "Error: `$DependencyArray[$i]` file doesn't exist`n Exitting now..."
-			exit exitStatus
-		}
-	}
 
 	if (! $xmlFile)
 	{
 		LogMsg 0 "Error: The xmlFile argument is null."
 		exit $exitStatus
 	}
-
-	if (! (test-path $xmlFile))
+	else
 	{
-		LogMsg 0 "Error: The XML file '${xmlFile}' does not exist."
-		exit $exitStatus
+		LogMsg 0 "Info: Getting configuration from '${xmlFile}'"
 	}
+
+	$DependencyArray = @(".\bin\dos2unix.exe", ".\bin\plink.exe", "bin\pscp.exe", $xmlFile)
+	For ($i=0; $i -lt $DependencyArray.Length; $i++)
+	{
+		if (-not (Test-Path $DependencyArray[$i]))
+		{
+			LogMsg 0 "Error: `$DependencyArray[$i]` file doesn't exist`n Exitting now..."
+			exit $exitStatus
+		}
+	}
+
 	LogMsg 0 "Done"
 }
 
@@ -1136,15 +1163,14 @@ function UploadFiles ([System.Xml.XmlElement] $vm)
 function DownloadFiles ([System.Xml.XmlElement] $vm)
 {
 	$VMLogDownloadFolder = $(Join-Path $LogFolder $vm.vmName)
-	
+
 	If( -not (test-path $VMLogDownloadFolder))
 	{
 		New-Item -ItemType Directory -Force -Path $VMLogDownloadFolder | out-null
-		LogMsg 9 "Debug: parentVhd=$parentVhd"
 	}
 
 	RemoteCopy -download -downloadFrom $vm.ipv4 -files "*" -downloadTo $VMLogDownloadFolder -port 22 -username $vm.userName -password $vm.passWord
-}			
+}
 #######################################################################
 #
 # Main script body
@@ -1183,7 +1209,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     #
     if ($vm.hardware)
     {
-        LogMsg 0 "Info: Creating VM: $($vm.vmName)"
+        LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
         $vmCreateStatus = CreateVM $vm $xmlData
         if (-not $vmCreateStatus)
         {
@@ -1201,7 +1227,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 
 foreach ($vm in $xmlData.Config.VMs.VM)
 {
-	LogMsg 0 "Info: Starting VM: $($vm.vmName)"
+	LogMsg 0 "Info: Starting VM: '$($vm.vmName)'"
 	$vmStartStatus = DoStartSystem $vm $xmlData
 	if ($vmStartStatus -eq $SystemStarting)
 	{
@@ -1216,8 +1242,15 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 		}
 		else
 		{
-            UploadFiles $vm
-            RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($xmlData.Config.VMs.VM.script)" -runAsSudo
+			UploadFiles $vm
+			if ($($xmlData.Config.VMs.VM.script))
+			{
+				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($xmlData.Config.VMs.VM.script)" -runAsSudo
+			}
+			else
+			{
+				LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
+			}
 			DownloadFiles $vm
 		}
 	}else{
@@ -1228,6 +1261,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 $TimeElapsed.Stop()
 LogMsg 1 "Info: Total execution time: $($($($TimeElapsed).Elapsed).TotalSeconds) Seconds"
 LogMsg 1 "Logs are located at '$LogFolder'" "White" "Black"
+LogMsg 1 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) *" "White" "Red"
 
 $exitStatus=0
 exit $exitStatus
