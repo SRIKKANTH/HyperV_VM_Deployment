@@ -1,5 +1,5 @@
 <Config>
-   <imageStoreDir>E:\W\CreateSetup\ParentVhds</imageStoreDir>
+   <imageStoreDir>D:\Software\ISO\</imageStoreDir>
 <VMs>
 	<VM>
 	   <hvServer>localhost</hvServer>
@@ -13,8 +13,7 @@
 		   <numCPUs>2</numCPUs>
 		   <memSize>1024</memSize>
 		   <disableDiff>false</disableDiff>
-		   <parentVhd>E:\W\CreateSetup\ParentVhds\Ubuntu1604.vhd</parentVhd>
-		   <nic>Legacy,Default Switch</nic>
+		   <parentVhd>D:\Software\ISO\Ubuntu1604.vhd</parentVhd>
 		   <nic>VMBUS,ExternalSwitch</nic>
 		   <generation>1</generation>
 		   <secureBoot>false</secureBoot>
