@@ -40,7 +40,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 					}
 					else
 					{
-						LogMsg 0 "Info: Compressing $f and adding to $tarFileName"
+						LogMsg 9 "Debug: Compressing $f and adding to $tarFileName"
 						$CompressFile = .\bin\7za.exe a $tarFileName $f
 						if ( $CompressFile -imatch "Everything is Ok" )
 						{
@@ -357,7 +357,7 @@ Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string]
 			$logCommand = "`"$command`""
 		}
 	}
-	LogMsg 0 "Info: .\bin\plink.exe -t -pw $password -P $port $username@$ip $logCommand"
+	LogMsg 9 "Debug: .\bin\plink.exe -t -pw $password -P $port $username@$ip $logCommand"
 	$returnCode = 1
 	$attemptswt = 0
 	$attemptswot = 0

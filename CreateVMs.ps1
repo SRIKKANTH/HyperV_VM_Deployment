@@ -82,13 +82,15 @@
                                       MAC address will be assigned to the
                                       new NIC. Otherwise a dynamic MAC is used.
 
-       <imageStoreDir> A directory to locate the parentVhd, can be either a UNC or local path
+       <imageStoreDir>	A directory to locate the parentVhd, can be either a UNC or local path
 
-       <generation>  Set to 1 to create a gen 1 VM, set to 2 to create a gen 2 VM. If nothing
+       <generation>	Set to 1 to create a gen 1 VM, set to 2 to create a gen 2 VM. If nothing
                      is specified, it will use gen 1.
 
-       <secureBoot>  Define whether to enable secure boot on gen 2 VMs. Set to "true" or "false".
+       <secureBoot>	Define whether to enable secure boot on gen 2 VMs. Set to "true" or "false".
                      If VM is gen 1 or if not specified, this will be false.
+       <DataVhd>	List of SCSI data disk sizes to be created and attached. 
+					Example: <DataVhd>2GB,10GB</DataVhd> 
 
 .Example
    Example VM definition with a hardware section:
@@ -109,6 +111,7 @@
            <nic>VMBus,ExternalNet</nic>
            <generation>1</generation>
            <secureBoot>false</secureBoot>
+           <DataVhd>2GB,10GB</DataVhd>
        </hardware>
    </vm>
    </Config>
@@ -474,18 +477,21 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     $dataVhd = $vm.hardware.DataVhd
     if ($dataVhd)
     {
-        if (-not ([System.IO.Path]::IsPathRooted($dataVhd)) )
-        {
-            $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-            $dataVhdFile = Join-Path $vhdDir $dataVhd
-        }
+		if(0)
+		{
+			if (-not ([System.IO.Path]::IsPathRooted($dataVhd)) )
+			{
+				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+				$dataVhdFile = Join-Path $vhdDir $dataVhd
+			}
 
-        $fileInfo = GetRemoteFileInfo $dataVhdFile $hvServer
-        if (-not $fileInfo)
-        {
-            LogMsg 0 "Error: The parent .vhd file '${dataVhd}' does not exist for ${vmName}"
-            return $False
-        }
+			$fileInfo = GetRemoteFileInfo $dataVhdFile $hvServer
+			if (-not $fileInfo)
+			{
+				LogMsg 0 "Error: The parent .vhd file '${dataVhd}' does not exist for ${vmName}"
+				return $False
+			}
+		}
     }
 
     #
@@ -944,20 +950,45 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         if ($dataVhd)
         {
             $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-            $dataVhdFile = Join-Path $vhdDir $dataVhd
+            $DiskSizeList = $DataVhd.Trim().Split(",")
+			$DiskNumber=0
+			foreach ($DiskSize in $DiskSizeList)
+			{
+				$DiskName="$vmName-$DiskSize-$DiskNumber.vhdx"
+				$DiskPath= $(Join-Path $vhdDir $DiskName)
+				LogMsg 0 "Debug: data disk: $DiskPath"
+				If((test-path $DiskPath))
+				{
+					Remove-Item "$DiskPath" -force
+				}
+				$DiskSize=($DiskSize / 1GB) * 1GB
+				New-VHD -Path $DiskPath -SizeBytes $DiskSize
 
-            Add-VMHardDiskDrive $vmName -Path $dataVhdFile -ControllerNumber 0 -ControllerLocation 1 -ComputerName $hvServer
-
-            if ($Error.Count -gt 0)
-            {
-                "Error: Failed to attach .vhd file '$vhdFilename' to VM ${vmName}"
-                #
-                # We cannot create the boot disk, so delete the VM
-                #
-                  LogMsg 0 "Error: Cannot attach data disk"
-                  DeleteVmAndVhd $vmName $hvServer $vhdFilename
-                return $false
+				If(test-path $DiskPath)
+				{
+					Add-VMHardDiskDrive $vmName -Path $DiskPath -ControllerType SCSI -ControllerNumber 0 -ControllerLocation $DiskNumber -ComputerName $hvServer
+				}
+				else
+				{
+					LogMsg 0 "Error: Cannot attach data disk: Disk not found at $DiskPath"
+					exit 1
+				}
+				
+				if ($Error.Count -gt 0)
+				{
+					"Error: Failed to attach .vhd file '$vhdFilename' to VM ${vmName}"
+					#
+					# We cannot create the boot disk, so delete the VM
+					#
+					LogMsg 0 "Error: Cannot attach data disk"
+					exit 1
+				}
+				$DiskNumber+=1
             }
+        }
+        else
+        {
+			LogMsg 0 "Debug: No data disks are being attached as '<DataVhd>' tag is either missing or empty"
         }
 
         #
@@ -1259,9 +1290,9 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 }
 
 $TimeElapsed.Stop()
-LogMsg 1 "Info: Total execution time: $($($($TimeElapsed).Elapsed).TotalSeconds) Seconds"
+LogMsg 1 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
 LogMsg 1 "Logs are located at '$LogFolder'" "White" "Black"
-LogMsg 1 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) *" "White" "Red"
+LogMsg 1 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
 
 $exitStatus=0
 exit $exitStatus
