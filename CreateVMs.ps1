@@ -956,7 +956,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 			{
 				$DiskName="$vmName-$DiskSize-$DiskNumber.vhdx"
 				$DiskPath= $(Join-Path $vhdDir $DiskName)
-				LogMsg 0 "Debug: data disk: $DiskPath"
+				LogMsg 9 "Debug: data disk: $DiskPath"
 				If((test-path $DiskPath))
 				{
 					Remove-Item "$DiskPath" -force
@@ -1187,7 +1187,9 @@ function CheckDependencies()
 
 function UploadFiles ([System.Xml.XmlElement] $vm)
 {
+	#.\bin\dos2unix.exe .\scripts\* 
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\scripts\*" -username $vm.userName -password $vm.passWord -upload
+	#.\bin\dos2unix.exe .\files\*  
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\files\*" -username $vm.userName -password $vm.passWord -upload
 }
 
@@ -1276,7 +1278,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 			UploadFiles $vm
 			if ($($xmlData.Config.VMs.VM.script))
 			{
-				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($xmlData.Config.VMs.VM.script)" -runAsSudo
+				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
 			}
 			else
 			{
@@ -1290,9 +1292,10 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 }
 
 $TimeElapsed.Stop()
-LogMsg 1 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
-LogMsg 1 "Logs are located at '$LogFolder'" "White" "Black"
-LogMsg 1 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+LogMsg 0 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
+LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
+LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
 
 $exitStatus=0
 exit $exitStatus

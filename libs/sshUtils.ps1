@@ -318,7 +318,7 @@ Function WrapperCommandsToFile([string] $username,[string] $password,[string] $i
     }
 }
 
-Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string] $command, [int] $port=22, [switch]$runAsSudo, [Boolean]$WriteHostOnly, [Boolean]$NoLogsPlease, [switch]$ignoreLinuxExitCode, [int]$runMaxAllowedTime = 300, [switch]$RunInBackGround)
+Function RunLinuxCmd([string] $username,[string] $password,[string] $ip,[string] $command, [int] $port=22, [switch]$runAsSudo, [Boolean]$WriteHostOnly, [Boolean]$NoLogsPlease, [switch]$ignoreLinuxExitCode, [int]$runMaxAllowedTime = 500, [switch]$RunInBackGround)
 {
 	if ($detectedDistro -ne "COREOS" )
 	{

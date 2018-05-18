@@ -1,3 +1,2 @@
-hostname > LogFileRemote.log
-uptime >> LogFileRemote.log
-ifconfig >> LogFileRemote.log
+ConsoleLogFile=ConsoleLogFile.log
+bash PrepareDocker.sh > $ConsoleLogFile

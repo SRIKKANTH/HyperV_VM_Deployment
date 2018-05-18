@@ -3,20 +3,22 @@
 <VMs>
 	<VM>
 	   <hvServer>localhost</hvServer>
-	   <vmName>VMname2</vmName>
+	   <vmName>VMname3</vmName>
 	   <ipv4></ipv4>
 	   <userName>root</userName>
-	   <passWord></passWord>
+	   <passWord>SamplePassword</passWord>
 	   <script>SampleScript.sh</script>
 	   <hardware>
 		   <create>true</create>
 		   <numCPUs>2</numCPUs>
 		   <memSize>1024</memSize>
 		   <disableDiff>false</disableDiff>
-		   <parentVhd>Ubuntu1604.vhd</parentVhd>
+		   <parentVhd>D:\Software\ISO\Ubuntu1604.vhd</parentVhd>
+		   <nic>VMBUS,ExternalSwitch</nic>
 		   <nic>VMBUS,ExternalSwitch</nic>
 		   <generation>1</generation>
 		   <secureBoot>false</secureBoot>
+		   <DataVhd>1GB</DataVhd>
 	   </hardware>	   
 	</VM>
 </VMs>
