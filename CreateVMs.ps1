@@ -988,7 +988,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         }
         else
         {
-			LogMsg 0 "Debug: No data disks are being attached as '<DataVhd>' tag is either missing or empty"
+			LogMsg 9 "Debug: No data disks are being attached as '<DataVhd>' tag is either missing or empty"
         }
 
         #
