@@ -95,9 +95,9 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 						}
 						elseif(($returnCode -ne 0) -and ($retry -eq $maxRetry))
 						{
-							Write-Host "Error in upload after $retry Attempt,Hence giving up"
+							LogMsg 0 "Error: Failed to upload after $retry attempts. Are you passing right VM credentials?"
 							$retry=$retry+1
-							Throw "Error in upload after $retry Attempt,Hence giving up"
+							Throw "Error: Failed to upload after $retry attempts. Are you passing right VM credentials?"
 						}
 						elseif($returnCode -eq 0)
 						{
@@ -180,9 +180,9 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 						}
 						elseif(($returnCode -ne 0) -and ($retry -eq $maxRetry))
 						{
-							Write-Host "Error in upload after $retry Attempt,Hence giving up"
+							LogMsg 0 "Error: Failed to upload after $retry attempts. Are you passing right VM credentials?"
 							$retry=$retry+1
-							Throw "Error in upload after $retry Attempt,Hence giving up"
+							Throw "Error: Failed to upload after $retry attempts. Are you passing right VM credentials?"
 						}
 						elseif($returnCode -eq 0)
 						{
