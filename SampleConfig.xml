@@ -13,7 +13,7 @@
 		   <numCPUs>2</numCPUs>
 		   <memSize>1024</memSize>
 		   <disableDiff>false</disableDiff>
-		   <parentVhd>D:\Software\ISO\Ubuntu1604.vhd</parentVhd>
+		   <parentVhd>E:\W\Repositories\HyperV_VM_Deployment\ParentVhds\Ubuntu1604.vhd</parentVhd>
 		   <nic>VMBUS,ExternalSwitch</nic>
 		   <nic>VMBUS,ExternalSwitch</nic>
 		   <generation>1</generation>
@@ -22,4 +22,7 @@
 	   </hardware>	   
 	</VM>
 </VMs>
+<TEST>
+	<TEST_APP_ZIP>C:\Users\Srikantha\source\repos\WebApplication1\WebApplication1\bin\Debug\PublishOutput.zip</TEST_APP_ZIP>
+</TEST>
 </Config>

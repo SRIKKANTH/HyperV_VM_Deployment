@@ -497,7 +497,11 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     #
     # Now check the optional parameters
     #
-
+    if ($xmlData.Config.TEST.TEST_APP_ZIP)
+    {
+		LogMsg 9 "Debug: Copying the "
+		Copy-Item $xmlData.Config.TEST.TEST_APP_ZIP -Destination "files"
+    }
     #
     # If numCPUs is present, make sure its value is within a valid range.
     #
@@ -1187,7 +1191,7 @@ function CheckDependencies()
 
 function UploadFiles ([System.Xml.XmlElement] $vm)
 {
-	#.\bin\dos2unix.exe .\scripts\* 
+	.\bin\dos2unix.exe .\scripts\* 
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\scripts\*" -username $vm.userName -password $vm.passWord -upload
 	#.\bin\dos2unix.exe .\files\*  
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\files\*" -username $vm.userName -password $vm.passWord -upload
@@ -1278,6 +1282,12 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 			UploadFiles $vm
 			if ($($xmlData.Config.VMs.VM.script))
 			{
+				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
+				
+				LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
+				LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
+				LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+
 				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
 			}
 			else
