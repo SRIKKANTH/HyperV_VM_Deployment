@@ -2,29 +2,29 @@
 	<global>
 		<imageStoreDir></imageStoreDir>
 	</global>
-<VMs>
-	<VM>
-	   <hvServer>localhost</hvServer>
-	   <vmName>VMname3</vmName>
-	   <ipv4></ipv4>
-	   <userName>root</userName>
-	   <passWord>SamplePassword</passWord>
-	   <script>SampleScript.sh</script>
-	   <hardware>
-		   <create>true</create>
-		   <numCPUs>2</numCPUs>
-		   <memSize>1024</memSize>
-		   <disableDiff>false</disableDiff>
-		   <parentVhd>E:\W\Repositories\HyperV_VM_Deployment\ParentVhds\Ubuntu1604.vhd</parentVhd>
-		   <nic>VMBUS,ExternalSwitch</nic>
-		   <nic>VMBUS,ExternalSwitch</nic>
-		   <generation>1</generation>
-		   <secureBoot>false</secureBoot>
-		   <DataVhd>1GB</DataVhd>
-	   </hardware>	   
-	</VM>
-</VMs>
-<TEST>
-	<TEST_APP_ZIP>C:\Users\Srikantha\source\repos\WebApplication1\WebApplication1\bin\Debug\PublishOutput.zip</TEST_APP_ZIP>
-</TEST>
+	<VMs>
+		<VM>
+		   <hvServer>localhost</hvServer>
+		   <vmName>VMname3</vmName>
+		   <ipv4></ipv4>
+		   <userName>root</userName>
+		   <passWord>SamplePassword</passWord>
+		   <script>SampleScript.sh</script>
+		   <hardware>
+			   <create>true</create>
+			   <numCPUs>2</numCPUs>
+			   <memSize>1024</memSize>
+			   <disableDiff>false</disableDiff>
+			   <parentVhd>E:\W\Repositories\HyperV_VM_Deployment\ParentVhds\Ubuntu1604.vhd</parentVhd>
+			   <nic>VMBUS,ExternalSwitch</nic>
+			   <nic>VMBUS,ExternalSwitch</nic>
+			   <generation>1</generation>
+			   <secureBoot>false</secureBoot>
+			   <DataVhd>1GB</DataVhd>
+		   </hardware>	   
+		</VM>
+	</VMs>
+	<TEST>
+		<TEST_APP_ZIP>C:\Users\Srikantha\source\repos\WebApplication1\WebApplication1\bin\Debug\PublishOutput.zip</TEST_APP_ZIP>
+	</TEST>
 </Config>
