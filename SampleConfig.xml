@@ -1,5 +1,7 @@
 <Config>
-   <imageStoreDir>D:\Software\ISO\</imageStoreDir>
+	<global>
+		<imageStoreDir></imageStoreDir>
+	</global>
 <VMs>
 	<VM>
 	   <hvServer>localhost</hvServer>

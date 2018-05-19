@@ -94,27 +94,32 @@
 
 .Example
    Example VM definition with a hardware section:
-   <Config>
-       <imageStoreDir>D:\HyperV\ParentVHDs\</imageStoreDir>
-   <vm>
-       <hvServer>hvServer</hvServer>
-       <vmName>VMname</vmName>
-       <ipv4>1.2.3.4</ipv4>
-       <sshKey>pki_id_rsa.ppk</sshKey>
-       <tests>CheckLisInstall, Hearbeat</tests>
-       <hardware>
-           <create>true</create>
-           <numCPUs>2</numCPUs>
-           <memSize>1024</memSize>
-           <parentVhd>distro.vhd</parentVhd>
-           <nic>Legacy,InternalNet</nic>
-           <nic>VMBus,ExternalNet</nic>
-           <generation>1</generation>
-           <secureBoot>false</secureBoot>
-           <DataVhd>2GB,10GB</DataVhd>
-       </hardware>
-   </vm>
-   </Config>
+	<Config>
+		<global>
+			<imageStoreDir></imageStoreDir>
+		</global>
+		<vm>
+			<hvServer>hvServer</hvServer>
+			<vmName>VMname</vmName>
+			<ipv4>1.2.3.4</ipv4>
+			<sshKey>pki_id_rsa.ppk</sshKey>
+			<tests>CheckLisInstall, Hearbeat</tests>
+			<hardware>
+				<create>true</create>
+				<numCPUs>2</numCPUs>
+				<memSize>1024</memSize>
+				<parentVhd>distro.vhd</parentVhd>
+				<nic>Legacy,InternalNet</nic>
+				<nic>VMBus,ExternalNet</nic>
+				<generation>1</generation>
+				<secureBoot>false</secureBoot>
+				<DataVhd>2GB,10GB</DataVhd>
+			</hardware>
+		</vm>
+		<TEST>
+			<TEST_APP_ZIP>C:\Users\Srikantha\source\repos\WebApplication1\WebApplication1\bin\Debug\PublishOutput.zip</TEST_APP_ZIP>
+		</TEST>
+	</Config>
 
 #>
 
