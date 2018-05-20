@@ -269,54 +269,31 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
     if ($vm.hardware.parentVhd)
     {
         $parentVhd = $vm.hardware.parentVhd
-        if (-not ([System.IO.Path]::IsPathRooted($parentVhd)) )
+        if ([System.IO.Path]::IsPathRooted($parentVhd)) 
+		{
+			LogMsg 0 "Info: Found a vhd at '$parentVhd'"
+			return $parentVhd
+        }
+        else
         {
-			$vhdDir=Join-Path $(Get-Location) "ParentVhds"
-			If((test-path $(Join-Path $vhdDir $parentVhd)))
+			$PathArray = @($(Join-Path (Get-Item -Path ".\").FullName "ParentVhds"), $((Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath), $xmlData.Config.global.imageStoreDir)
+
+			For ($i=0; $i -lt $PathArray.Length; $i++)
 			{
-				$parentVhd = Join-Path $vhdDir $parentVhd
-				LogMsg 9 "Debug: parentVhd=$parentVhd"
-			}
-			else
-			{
-				LogMsg 9 "Debug: parentVhd isn't found in $vhdDir"
-				if ($xmlData.Config.global.imageStoreDir)
+				if($PathArray[$i])
 				{
-					$vhdDir = $xmlData.Config.global.imageStoreDir
-					LogMsg 9 "Debug: vhdDir=$vhdDir"
-					if((test-path $(Join-Path $vhdDir $parentVhd)))
+					if (Test-Path $PathArray[$i])
 					{
-						$parentVhd = Join-Path $vhdDir $parentVhd
-						LogMsg 9 "Debug: parentVhd=$parentVhd"
-					}
-				}
-				else
-				{
-					LogMsg 9 "Debug: 'imageStoreDir' wasn't provided in config.xml file."
-					LogMsg 9 "Debug: Checking for parentVhd in Hyper-V server's default VirtualHardDiskPath"
-					$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-					LogMsg 9 "Debug: vhdDir=$vhdDir"
-					if((test-path $(Join-Path $vhdDir $parentVhd)))
-					{
-						$parentVhd = Join-Path $vhdDir $parentVhd
-						LogMsg 9 "Debug: parentVhd=$parentVhd"
-					}
-					else
-					{
-						LogMsg 0 "Error: Provide atleast one valid vhd path"
-						exit 1
+						$TempParentVhd =  Join-Path $PathArray[$i] $parentVhd
+						if((test-path $TempParentVhd))
+						{
+							LogMsg 9 "Debug: Found a vhd at '$TempParentVhd'"
+							return $TempParentVhd
+						}
 					}
 				}
 			}
         }
-        if( -not (test-path $parentVhd))
-		{
-
-		}
-		else
-		{
-			LogMsg 9 "Debug: '$parentVhd' file exists"
-		}
 
         $uriPath = New-Object -TypeName System.Uri -ArgumentList $parentVhd
         if ($uriPath.IsUnc)
@@ -352,6 +329,7 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
     }
     else
     {
+		LogMsg 1 "Warn: As no valid vhd provided. Now I will try to get the latest .vhd file from the default locations."
 		$PathArray = @($(Join-Path (Get-Item -Path ".\").FullName "ParentVhds"), $xmlData.Config.global.imageStoreDir, $((Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath))
 
 		For ($i=0; $i -lt $PathArray.Length; $i++)
@@ -374,22 +352,19 @@ function GetParentVhd([System.Xml.XmlElement] $vm, [XML]$xmlData)
 							{
 								$parentVhd = Join-Path $PathArray[$i] $TempParentVhd
 								LogMsg 9 "Debug: Found a vhd at '$parentVhd'"
+								LogMsg 1 "Warn: As no valid vhd provided. I will use '$parentVhd' as parentVhd."
+								LogMsg 1 "Warn: This might cause issues like login credential mismatch etc.,"
+								LogMsg 1 "Warn: To avoid this, provide the right path for reference .vhd file in <parentVhd> tag of the '$xmlFile'"
+								return $parentVhd
 							}
-						}
-						else
-						{
-							LogMsg 9 "Debug: `$TempParentVhd is null"
 						}
 					}
 				}
-				else
-				{
-					LogMsg 9 "Debug: Folder doesn't exists"
-				}
 			}
-		}
+		}    
     }
-    return $parentVhd
+    LogMsg 1 "Error: Unable to get Parentvhd file exitting now..."
+	exit 1
 }
 #######################################################################
 #
@@ -1291,7 +1266,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 				
 				LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
 				LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
-				LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+				LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
 
 				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
 			}
@@ -1310,7 +1285,7 @@ $TimeElapsed.Stop()
 LogMsg 0 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
 LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
 LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
-LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
 
 $exitStatus=0
 exit $exitStatus
