@@ -6,11 +6,8 @@ fi
 
 LogFile="LogFile.log"
 pkill tail > /dev/null
-if [ "x$setup_type" != "x" ]
-then
-	touch $LogFile 
-	tail -f $LogFile &
-fi
+touch $LogFile 
+tail -f $LogFile &
  
 function InstallDockerFromGetDockerDotCom ()
 {
@@ -87,33 +84,13 @@ function OpenPorts ()
 	#SSH port
 	echo y | sudo ufw allow 22/tcp | LogMsg
 
-	if [ $setup_type == "DebugContainer" ] 
-	then
-		echo y | sudo ufw allow 222/tcp | LogMsg
-		echo y | sudo ufw allow 5000/tcp | LogMsg
-	elif [ $setup_type == "InfluxdbContainer" ] 
-	then
-		echo y | sudo ufw allow 8086/tcp | LogMsg
-		echo y | sudo ufw allow 8083/tcp | LogMsg
-	fi
+	echo y | sudo ufw allow 8086/tcp | LogMsg
+	echo y | sudo ufw allow 8083/tcp | LogMsg
 	
 	echo y | sudo ufw enable | LogMsg
 	ufwstatus=`sudo ufw status`
 	echo "ufw status ${ufwstatus}" | LogMsg
 }
-
-function RegistryLogin ()
-{
-	registryUserName=$1
-	registrypassword=$2
-	sudo docker login $REGISTRY_URL -u $registryUserName -p $registrypassword
-	if [ $? -ne 0 ] 
-	then
-	  echo "registry account login failed!"
-	  return 1
-	fi
-}
-
 
 function InstallDocker()
 {
@@ -155,106 +132,6 @@ function InstallDocker()
 	OpenPorts
 }
 
-function InstallFluentDContainer ()
-{
-	containername=$FLUENTD_CONTAINER_NAME
-	imagename=$1
-	fileDirectory="/etc/fluentd"
-	
-	if [ ! -d "$fileDirectory" ]
-	then
-		mkdir -p "$fileDirectory"
-		echo "Created fluentd folder "
-	fi
-	
-	curl https://manishdbenginetest.blob.core.windows.net/fluentdcontainerfiles/td-agent.conf > $fileDirectory/td-agent.conf
-
-	if [ -e $fileDirectory/td-agent.conf ]
-	then
-		echo "Info: Downloaded required files for FluentD: td-agent.conf"
-	else
-		echo "Error: Failed to download required files for FluentD: td-agent.conf"
-		return 1
-	fi	
-	
-	docker images | grep $imagename > /dev/null 2>&1	
-	if [ $? -ne 0 ] 
-	then
-		echo "Pulling FLUENTD Image from Registry"
-		sudo docker pull $imagename
-	fi
-	
-	echo "Creating FLUENTD container"
-	sudo docker ps | grep $containername > /dev/null 2>&1
-	if [ $? -eq 0 ] 
-	then
-		echo "fluentd already installed"
-		return
-	fi
-	
-	sudo docker run -d -p 24224:24224 -v $HOME/fluentd:/etc/fluentd -v $HOME/runmdsd:/var/run/mdsd -e FLUENTD_CONF=/etc/fluentd/td-agent.conf --name=$containername $imagename
-
-	sudo docker ps | grep $containername > /dev/null 2>&1	
-	if [ $? -ne 0 ] 
-	then
-		echo "fluentd install failed"
-		return 1
-	fi
-	
-	echo "InstallFluentDContainer:Done"
-}
-
-function SetupDebugContainer()
-{
-	echo "Info: SetupDebugContainer started" | LogMsg
-	InstallDocker
-
-cat >Dockerfile <<EOL
-FROM ubuntu:16.04
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial main restricted"  > /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial-updates main restricted" >> /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial universe" >> /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial-updates universe" >> /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial multiverse" >> /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial-updates multiverse" >> /etc/apt/sources.list
-RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial-backports main restricted universe multiverse" >> /etc/apt/sources.list
-RUN echo "deb http://security.ubuntu.com/ubuntu xenial-security main restricted" >> /etc/apt/sources.list
-RUN echo "deb http://security.ubuntu.com/ubuntu xenial-security universe" >> /etc/apt/sources.list
-RUN echo "deb http://security.ubuntu.com/ubuntu xenial-security multiverse" >> /etc/apt/sources.list
-
-RUN apt-get update
-RUN apt-get install openssh-server unzip curl apt-transport-https -y
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-RUN mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
-RUN sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/microsoft-ubuntu-xenial-prod xenial main" > /etc/apt/sources.list.d/dotnetdev.list'
-RUN apt-get update
-RUN apt-get install -y dotnet-sdk-2.0.3 dotnet-hosting-2.0.6
-
-RUN mkdir /var/run/sshd
-RUN echo 'root:screencast' | chpasswd
-RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-ENV NOTVISIBLE "in users profile"
-RUN echo "export VISIBLE=now" >> /etc/profile
-EXPOSE 22
-CMD ["/usr/sbin/sshd", "-D"]
-EOL
-	
-	docker build -t ubuntu1604_dotnet_installed .  | LogMsg
-	docker run -d -P  -p  222:22 -p 5000:5000 -v /root:/root -v /etc/shadow:/etc/shadow --name u1604_dotnet_debug ubuntu1604_dotnet_installed | LogMsg
-	if [ $? -ne 0 ] 
-	then 
-		echo "Error: Failed to setup DebugContainer!" | LogMsg
-		echo "DEBUG_CONTAINER_INITIALISATION_FAILED" | UpdateStatus
-		exit 1 
-	else
-		echo "Info: DebugContainer initialised succesfully" | LogMsg
-		echo "DEBUG_CONTAINER_INITIALISATION_SUCCESS" | UpdateStatus
-	fi
-
-	docker port u1604_dotnet_debug | LogMsg
-}
-
 function SetupInfluxdbContainer()
 {
 	echo "Info: Influxdb initialization started" | LogMsg
@@ -290,24 +167,5 @@ function SetupInfluxdbContainer()
 #
 ########################################################################
 
-case "$setup_type" in
-	DebugContainer)
-		SetupDebugContainer
-		;;
-
-	InfluxdbContainer)
-		SetupInfluxdbContainer
-		;;
-	-h|--help|-help)
-		echo "Usage: "
-		echo "$0 <DebugContainer|InfluxdbContainer|>"
-		echo "$0 DebugContainer	: Prepares an ubuntu1604 container with dotnet installed"
-		echo "$0 InfluxdbContainer	: Prepares an Influxdb container"
-		echo "$0	: Sources the contents and doesnt execute any functionality"
-		;;
-	*)
-		echo "No functionality is called just sourcing contens of $0"
-		bash ./$0 -h
-esac
-
+SetupInfluxdbContainer
 
