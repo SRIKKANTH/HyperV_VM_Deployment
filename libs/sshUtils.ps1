@@ -51,7 +51,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 				if ( $CompressCount -eq $fileCounter )
 				{
 					$retry=1
-					$maxRetry=10
+					$maxRetry=20
 					while($retry -le $maxRetry)
 					{
 						if($usePrivateKey)
@@ -134,7 +134,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 						continue
 					}
 					$retry=1
-					$maxRetry=10
+					$maxRetry=20
 					$testFile = $f.trim()
 					$recurse = ""
 					while($retry -le $maxRetry)
@@ -209,7 +209,7 @@ Function RemoteCopy($uploadTo, $downloadFrom, $downloadTo, $port=22, $files, $us
 			foreach ($f in $files)
 			{
 				$retry=1
-				$maxRetry=10
+				$maxRetry=20
 				$testFile = $f.trim()
 				$recurse = ""
 				while($retry -le $maxRetry)
