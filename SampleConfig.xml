@@ -1,11 +1,11 @@
 <Config>
 	<global>
-		<imageStoreDir></imageStoreDir>
+		<imageStoreDir>D:\Software\ISO</imageStoreDir>
 	</global>
 	<VMs>
 		<VM>
 		   <hvServer>localhost</hvServer>
-		   <vmName>VMname3</vmName>
+		   <vmName>VMname1</vmName>
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
@@ -15,7 +15,7 @@
 			   <numCPUs>2</numCPUs>
 			   <memSize>1024</memSize>
 			   <disableDiff>false</disableDiff>
-			   <parentVhd>E:\W\Repositories\HyperV_VM_Deployment\ParentVhds\Ubuntu1604.vhd</parentVhd>
+			   <parentVhd>Ubuntu1604.vhd</parentVhd>
 			   <nic>VMBUS,ExternalSwitch</nic>
 			   <nic>VMBUS,ExternalSwitch</nic>
 			   <generation>1</generation>
@@ -25,6 +25,6 @@
 		</VM>
 	</VMs>
 	<TEST>
-		<TEST_APP_ZIP>C:\Users\Srikantha\source\repos\WebApplication1\WebApplication1\bin\Debug\PublishOutput.zip</TEST_APP_ZIP>
+		<TEST_APP_ZIP></TEST_APP_ZIP>
 	</TEST>
 </Config>
