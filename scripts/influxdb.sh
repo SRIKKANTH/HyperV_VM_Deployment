@@ -1,8 +1,17 @@
+setup_type=$1
 if [ ! -f azuremodules.sh ]; then
     wget https://raw.githubusercontent.com/SRIKKANTH/HyperV_VM_Deployment/master/scripts/azuremodules.sh
 fi
 . azuremodules.sh
 
+LogFile="LogFile.log"
+pkill tail > /dev/null
+if [ "x$setup_type" != "x" ]
+then
+	touch $LogFile 
+	tail -f $LogFile &
+fi
+ 
 function InstallDockerFromGetDockerDotCom ()
 {
     sudo docker --version | grep "Docker version" | LogMsg
@@ -76,20 +85,21 @@ function InstallDockerFromRepo ()
 function OpenPorts ()
 {
 	#SSH port
-	sudo ufw allow 22/tcp
-	sudo ufw allow 222/tcp
-	#Mariadb/Mysql port
-	echo "Opening MariaDB Port 3306 :Done"
-	sudo ufw allow 3306/tcp
-	#Open Postgres port
-	echo "Opening Postgres Port 5432 :Done"
-	sudo ufw allow 5432/tcp
-	#Open NodeAgentPort
-	echo "Opening NodeAgent Port 5000 :Done"
-	echo y | sudo ufw allow 5000/tcp
-	sudo ufw enable
+	echo y | sudo ufw allow 22/tcp | LogMsg
+
+	if [ $setup_type == "DebugContainer" ] 
+	then
+		echo y | sudo ufw allow 222/tcp | LogMsg
+		echo y | sudo ufw allow 5000/tcp | LogMsg
+	elif [ $setup_type == "InfluxdbContainer" ] 
+	then
+		echo y | sudo ufw allow 8086/tcp | LogMsg
+		echo y | sudo ufw allow 8083/tcp | LogMsg
+	fi
+	
+	echo y | sudo ufw enable | LogMsg
 	ufwstatus=`sudo ufw status`
-	echo "ufw status ${ufwstatus}"
+	echo "ufw status ${ufwstatus}" | LogMsg
 }
 
 function RegistryLogin ()
@@ -102,6 +112,47 @@ function RegistryLogin ()
 	  echo "registry account login failed!"
 	  return 1
 	fi
+}
+
+
+function InstallDocker()
+{
+    if [[ `which docker` != "" ]]
+    then
+        echo "Info: 'docker' is already installed skipping ..."
+    fi
+
+    echo "Info: Installing 'docker' ..."
+
+	InstallDockerFromRepo
+	Status=$?
+	if [ $Status -eq 1 ]
+	then
+		set_service_status docker restart
+	elif [ $Status -gt 1 ]
+	then
+		echo "Warning: InstallDockerFromRepo failed to install 'docker'" | LogMsg
+		InstallDockerFromGetDockerDotCom
+		Status=$?
+		if [ $Status -eq 1 ]
+		then
+			set_service_status docker restart
+		elif [ $Status -gt 1 ]
+		then
+			echo "Error: Failed to Install docker exitting now" | LogMsg
+			echo "DOCKER_INSTALLATION_FAILED" | UpdateStatus
+		fi
+	fi
+	
+	echo "Info: Installation of docker succesfully finished" | LogMsg		
+	echo "DOCKER_INSTALLATION_SUCCESS" | UpdateStatus
+
+	if [ $? -ne 0 ] 
+	then 
+		exit 1 
+	fi
+
+	OpenPorts
 }
 
 function InstallFluentDContainer ()
@@ -155,6 +206,9 @@ function InstallFluentDContainer ()
 
 function SetupDebugContainer()
 {
+	echo "Info: SetupDebugContainer started" | LogMsg
+	InstallDocker
+
 cat >Dockerfile <<EOL
 FROM ubuntu:16.04
 RUN echo "deb http://azure.archive.ubuntu.com/ubuntu/ xenial main restricted"  > /etc/apt/sources.list
@@ -186,39 +240,49 @@ EXPOSE 22
 CMD ["/usr/sbin/sshd", "-D"]
 EOL
 	
-	docker build -t ubuntu1604 . 
-	docker run -d -P  -p  222:22 -p 5000:5000 -v /root:/root -v /etc/shadow:/etc/shadow --name ubuntu1604_sshd ubuntu1604
-	docker port ubuntu1604_sshd
-}
-
-function Main()
-{
-	InstallDockerFromRepo
-	Status=$?
-	if [ $Status -eq 1 ]
-	then
-		set_service_status docker restart
-	elif [ $Status -gt 1 ]
-	then
-		echo "Warning: InstallDockerFromRepo failed to install 'docker'" | LogMsg
-		InstallDockerFromGetDockerDotCom
-		Status=$?
-		if [ $Status -eq 1 ]
-		then
-			set_service_status docker restart
-		elif [ $Status -gt 1 ]
-		then
-			echo "Failed to Install docker exitting now"
-			echo "DOCKER_INSTALLATION_FAILED" | UpdateStatus
-		fi
+	docker build -t ubuntu1604_dotnet_installed .  | LogMsg
+	docker run -d -P  -p  222:22 -p 5000:5000 -v /root:/root -v /etc/shadow:/etc/shadow --name u1604_dotnet_debug ubuntu1604_dotnet_installed | LogMsg
+	if [ $? -ne 0 ] 
+	then 
+		echo "Error: Failed to setup DebugContainer!" | LogMsg
+		echo "DEBUG_CONTAINER_INITIALISATION_FAILED" | UpdateStatus
+		exit 1 
+	else
+		echo "Info: DebugContainer initialised succesfully" | LogMsg
+		echo "DEBUG_CONTAINER_INITIALISATION_SUCCESS" | UpdateStatus
 	fi
 
-	echo "DOCKER_INSTALLATION_SUCCESS" | UpdateStatus
-	SetupDebugContainer
-	OpenPorts
+	docker port u1604_dotnet_debug | LogMsg
 }
 
+function SetupInfluxdbContainer()
+{
+	echo "Info: Influxdb initialization started" | LogMsg
+	InstallDocker
 
+	INFLUX_DB_PATH=$PWD
+
+	docker run -d -p 8086:8086 \
+		  -v $INFLUX_DB_PATH:/var/lib/influxdb \
+		   --name influxdb influxdb 2>&1 | LogMsg
+
+	if [ $? -ne 0 ] 
+	then 
+		exit 1 
+	fi
+	sleep 4
+	if [ `curl -sl -I http://localhost:8086/ping | grep X-Influxdb-Version| wc -l`  != 1 ] 
+	then 
+		echo "Error: Failed to initialise Influxdb!" | LogMsg
+		echo "INFLUXDB_INITIALISATION_FAILED" | UpdateStatus
+		exit 1 
+	else
+		echo "Info: Influxdb initialised succesfully" | LogMsg
+		echo "INFLUXDB_INITIALISATION_SUCCESS" | UpdateStatus
+	fi
+	docker port influxdb | LogMsg
+	return 0
+}
 
 ########################################################################
 #
@@ -226,10 +290,24 @@ function Main()
 #
 ########################################################################
 
-Main
+case "$setup_type" in
+	DebugContainer)
+		SetupDebugContainer
+		;;
 
-#RegistryLogin $REGISTRY_USERNAME $REGISTRY_PASSWORD 2>&1 | logpipedout 
-#if [ $? -ne 0 ] 
-#then 
-#	exit 1 
-#fi
+	InfluxdbContainer)
+		SetupInfluxdbContainer
+		;;
+	-h|--help|-help)
+		echo "Usage: "
+		echo "$0 <DebugContainer|InfluxdbContainer|>"
+		echo "$0 DebugContainer	: Prepares an ubuntu1604 container with dotnet installed"
+		echo "$0 InfluxdbContainer	: Prepares an Influxdb container"
+		echo "$0	: Sources the contents and doesnt execute any functionality"
+		;;
+	*)
+		echo "No functionality is called just sourcing contens of $0"
+		bash ./$0 -h
+esac
+
+

@@ -1171,7 +1171,7 @@ function CheckDependencies()
 
 function UploadFiles ([System.Xml.XmlElement] $vm)
 {
-	.\bin\dos2unix.exe .\scripts\* 
+	.\bin\dos2unix.exe .\scripts\* 2>&1  >$null
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\scripts\*" -username $vm.userName -password $vm.passWord -upload
 	#.\bin\dos2unix.exe .\files\*  
     RemoteCopy -uploadTo $vm.ipv4 -port 22 -files ".\files\*" -username $vm.userName -password $vm.passWord -upload
