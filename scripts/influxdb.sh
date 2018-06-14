@@ -1,6 +1,6 @@
 setup_type=$1
 if [ ! -f azuremodules.sh ]; then
-    wget https://raw.githubusercontent.com/SRIKKANTH/HyperV_VM_Deployment/master/scripts/azuremodules.sh
+    wget https://raw.githubusercontent.com/SRIKKANTH/HelperScripts/master/bash/azuremodules.sh
 fi
 . azuremodules.sh
 
@@ -83,10 +83,10 @@ function OpenPorts ()
 {
 	#SSH port
 	echo y | sudo ufw allow 22/tcp | LogMsg
-
 	echo y | sudo ufw allow 8086/tcp | LogMsg
 	echo y | sudo ufw allow 8083/tcp | LogMsg
-	
+	echo y | sudo ufw allow 8888/tcp | LogMsg
+
 	echo y | sudo ufw enable | LogMsg
 	ufwstatus=`sudo ufw status`
 	echo "ufw status ${ufwstatus}" | LogMsg
@@ -139,9 +139,16 @@ function SetupInfluxdbContainer()
 
 	INFLUX_DB_PATH=/datadrive
 	mkdir $INFLUX_DB_PATH
+	docker network create influxdb
+
 	docker run -d -p 8086:8086 \
-		  -v $INFLUX_DB_PATH:/var/lib/influxdb \
-		   --name influxdb influxdb 2>&1 | LogMsg
+		-v $INFLUX_DB_PATH:/var/lib/influxdb \
+		--net=influxdb \
+		--name influxdb influxdb 2>&1 | LogMsg	
+	
+	docker run -d -p 8888:8888 \
+		--net=influxdb\
+		chronograf --influxdb-url=http://`get_one_ip`:8086
 
 	if [ $? -ne 0 ] 
 	then 
@@ -155,6 +162,8 @@ function SetupInfluxdbContainer()
 		exit 1 
 	else
 		echo "Info: Influxdb initialised succesfully" | LogMsg
+		echo "influxdb-url=http://`get_one_ip`:8086" | LogMsg
+		echo "chronograf-url=http://`get_one_ip`:8888" | LogMsg
 		echo "INFLUXDB_INITIALISATION_SUCCESS" | UpdateStatus
 	fi
 	docker port influxdb | LogMsg
