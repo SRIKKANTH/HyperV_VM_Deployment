@@ -97,36 +97,36 @@ function InstallDocker()
     if [[ `which docker` != "" ]]
     then
         echo "Info: 'docker' is already installed skipping ..."
-    fi
+    else
+		echo "Info: Installing 'docker' ..."
 
-    echo "Info: Installing 'docker' ..."
-
-	InstallDockerFromRepo
-	Status=$?
-	if [ $Status -eq 1 ]
-	then
-		set_service_status docker restart
-	elif [ $Status -gt 1 ]
-	then
-		echo "Warning: InstallDockerFromRepo failed to install 'docker'" | LogMsg
-		InstallDockerFromGetDockerDotCom
+		InstallDockerFromRepo
 		Status=$?
 		if [ $Status -eq 1 ]
 		then
 			set_service_status docker restart
 		elif [ $Status -gt 1 ]
 		then
-			echo "Error: Failed to Install docker exitting now" | LogMsg
-			echo "DOCKER_INSTALLATION_FAILED" | UpdateStatus
+			echo "Warning: InstallDockerFromRepo failed to install 'docker'" | LogMsg
+			InstallDockerFromGetDockerDotCom
+			Status=$?
+			if [ $Status -eq 1 ]
+			then
+				set_service_status docker restart
+			elif [ $Status -gt 1 ]
+			then
+				echo "Error: Failed to Install docker exitting now" | LogMsg
+				echo "DOCKER_INSTALLATION_FAILED" | UpdateStatus
+			fi
 		fi
-	fi
-	
-	echo "Info: Installation of docker succesfully finished" | LogMsg		
-	echo "DOCKER_INSTALLATION_SUCCESS" | UpdateStatus
+		
+		echo "Info: Installation of docker succesfully finished" | LogMsg		
+		echo "DOCKER_INSTALLATION_SUCCESS" | UpdateStatus
 
-	if [ $? -ne 0 ] 
-	then 
-		exit 1 
+		if [ $? -ne 0 ] 
+		then 
+			exit 1 
+		fi
 	fi
 
 	OpenPorts
@@ -137,8 +137,8 @@ function SetupInfluxdbContainer()
 	echo "Info: Influxdb initialization started" | LogMsg
 	InstallDocker
 
-	INFLUX_DB_PATH=$PWD
-
+	INFLUX_DB_PATH=/datadrive
+	mkdir $INFLUX_DB_PATH
 	docker run -d -p 8086:8086 \
 		  -v $INFLUX_DB_PATH:/var/lib/influxdb \
 		   --name influxdb influxdb 2>&1 | LogMsg
