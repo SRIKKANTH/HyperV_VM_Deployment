@@ -1259,22 +1259,22 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 		}
 		else
 		{
-			UploadFiles $vm
-			if ($($xmlData.Config.VMs.VM.script))
-			{
-				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
-				
-				LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
-				LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
-				LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
+            if ($($xmlData.Config.VMs.VM.script))
+            {
+                UploadFiles $vm
+                RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
+                
+                LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
+                LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
+                LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
 
-				RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
-			}
-			else
-			{
-				LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
-			}
-			DownloadFiles $vm
+                RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
+                DownloadFiles $vm
+            }
+            else
+            {
+                LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
+            }
 		}
 	}else{
 		exit $exitStatus
