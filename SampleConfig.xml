@@ -9,14 +9,13 @@
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
-		   <script>SampleScript.sh</script>
+		   <StartupScript>SampleScript.sh</StartupScript>
 		   <hardware>
 			   <create>true</create>
 			   <numCPUs>2</numCPUs>
 			   <memSize>1024</memSize>
 			   <disableDiff>false</disableDiff>
 			   <parentVhd>Ubuntu1604.vhd</parentVhd>
-			   <nic>VMBUS,ExternalSwitch</nic>
 			   <nic>VMBUS,ExternalSwitch</nic>
 			   <generation>1</generation>
 			   <secureBoot>false</secureBoot>
