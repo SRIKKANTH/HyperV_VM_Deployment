@@ -1226,13 +1226,19 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     #
     if ($vm.hardware)
     {
-        LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
-        $vmCreateStatus = CreateVM $vm $xmlData
-        if (-not $vmCreateStatus)
+        $VmName = $vm.vmName
+        for($i = 0; $i -lt $vm.Count; $i++)
         {
-            exit $exitStatus
+            $vm.vmName = $VmName + "$i"
+            LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
+            $vmCreateStatus = CreateVM $vm $xmlData
+            if (-not $vmCreateStatus)
+            {
+                exit $exitStatus
+            }
         }
         $vm | Add-Member -NotePropertyName state -NotePropertyValue $SystemDown
+        $vm.vmName = $VmName
     }
     else
     {
@@ -1241,51 +1247,60 @@ foreach ($vm in $xmlData.Config.VMs.VM)
         exit 0
     }
 }
-
+$IpList = @()
 foreach ($vm in $xmlData.Config.VMs.VM)
 {
-	LogMsg 0 "Info: Starting VM: '$($vm.vmName)'"
-	$vmStartStatus = DoStartSystem $vm $xmlData
-	if ($vmStartStatus -eq $SystemStarting)
-	{
-		$vmStartStatus = DoSystemStarting $vm $xmlData
-		$VMIP=GetVMIPv4Address $vm $xmlData
+    $VmName = $vm.vmName
+    for($i = 0; $i -lt $vm.Count; $i++)
+    {
+        $vm.vmName = $VmName + "$i"
+        LogMsg 0 "Info: Starting VM: '$($vm.vmName)'"
+        $vmStartStatus = DoStartSystem $vm $xmlData
+        if ($vmStartStatus -eq $SystemStarting)
+        {
+            $vmStartStatus = DoSystemStarting $vm $xmlData
+            $VMIP=GetVMIPv4Address $vm $xmlData
 
-		if (-not $VMIP)
-		{
-			LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
-			LogMsg 0 "Fix: run 'sudo apt install *`uname -r`* in the parent .vhd and use it'"
-			LogMsg 0 "Error: Also check Switch settings!"
-		}
-		else
-		{
-            if ($($xmlData.Config.VMs.VM.script))
+            if (-not $VMIP)
             {
-                UploadFiles $vm
-                RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
-                
-                LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
-                LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
-                LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
-
-                RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
-                DownloadFiles $vm
+                LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
+                LogMsg 0 "Fix: run 'sudo apt install *`uname -r`* in the parent .vhd and use it'"
+                LogMsg 0 "Error: Also check Switch settings!"
             }
             else
             {
-                LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
+                $IpList += $VMIP
+                if ($($xmlData.Config.VMs.VM.script))
+                {
+                    UploadFiles $vm
+                    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
+
+                    LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
+                    LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
+                    LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
+
+                    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
+                    DownloadFiles $vm
+                }
+                else
+                {
+                    LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
+                }
             }
-		}
-	}else{
-		exit $exitStatus
-	}
+        }else{
+            exit $exitStatus
+        }
+    }
+    $vm.vmName = $VmName
 }
 
 $TimeElapsed.Stop()
 LogMsg 0 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
 LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
-LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
-LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
-
+foreach ($VMIP in $IpList)
+{
+    LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($VMIP) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+    #LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
+}
 $exitStatus=0
 exit $exitStatus

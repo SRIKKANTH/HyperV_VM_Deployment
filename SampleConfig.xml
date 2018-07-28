@@ -6,18 +6,18 @@
 		<VM>
 		   <hvServer>localhost</hvServer>
 		   <vmName>VMname1</vmName>
+		   <Count>3</Count>
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
-		   <script>SampleScript.sh</script>
+		   <script></script>
 		   <hardware>
 			   <create>true</create>
-			   <numCPUs>2</numCPUs>
+			   <numCPUs>1</numCPUs>
 			   <memSize>1024</memSize>
 			   <disableDiff>false</disableDiff>
 			   <parentVhd>Ubuntu1604.vhd</parentVhd>
-			   <nic>VMBUS,ExternalSwitch</nic>
-			   <nic>VMBUS,ExternalSwitch</nic>
+			   <nic>VMBUS,Default Switch</nic>
 			   <generation>1</generation>
 			   <secureBoot>false</secureBoot>
 			   <DataVhd>1GB</DataVhd>
