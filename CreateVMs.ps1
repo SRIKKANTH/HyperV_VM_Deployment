@@ -404,9 +404,9 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
         return $False
     }
 
-    if (-not $vm.script)
+    if (-not $vm.StartupScript)
     {
-        LogMsg 0 "Warn: VM $($vm.vmName) in '$xmlFile' is missing a 'script' tag, **No Scripts will be executed once the VM creation is done.**"
+        LogMsg 0 "Warn: VM $($vm.vmName) in '$xmlFile' is missing a 'StartupScript' tag, **No Scripts will be executed once the VM creation is done.**"
     }
 
     $vmName = $vm.vmName
@@ -1270,7 +1270,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
             else
             {
                 $IpList += $VMIP
-                if ($($xmlData.Config.VMs.VM.script))
+                if ($($xmlData.Config.VMs.VM.StartupScript))
                 {
                     UploadFiles $vm
                     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
@@ -1279,12 +1279,12 @@ foreach ($vm in $xmlData.Config.VMs.VM)
                     LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
                     LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
 
-                    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.script)" -runAsSudo
+                    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.StartupScript)" -runAsSudo
                     DownloadFiles $vm
                 }
                 else
                 {
-                    LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'script' tag"
+                    LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'StartupScript' tag"
                 }
             }
         }else{
@@ -1297,10 +1297,14 @@ foreach ($vm in $xmlData.Config.VMs.VM)
 $TimeElapsed.Stop()
 LogMsg 0 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
 LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
+
 foreach ($VMIP in $IpList)
 {
     LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($VMIP) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
-    #LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
+    if ($($xmlData.Config.VMs.VM.StartupScript) -eq "PrepareDocker.sh")
+    {
+        LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
+    }
 }
 $exitStatus=0
 exit $exitStatus

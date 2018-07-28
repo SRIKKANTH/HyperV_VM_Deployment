@@ -1,5 +1,5 @@
 if [ ! -f azuremodules.sh ]; then
-    wget https://raw.githubusercontent.com/SRIKKANTH/HyperV_VM_Deployment/master/scripts/azuremodules.sh
+    wget https://raw.githubusercontent.com/SRIKKANTH/HelperScripts/master/bash/azuremodules.sh
 fi
 . azuremodules.sh
 

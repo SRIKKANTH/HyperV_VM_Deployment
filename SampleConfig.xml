@@ -6,11 +6,11 @@
 		<VM>
 		   <hvServer>localhost</hvServer>
 		   <vmName>VMname1</vmName>
-		   <Count>3</Count>
+		   <Count>1</Count>
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
-		   <script></script>
+		   <StartupScript></StartupScript>
 		   <hardware>
 			   <create>true</create>
 			   <numCPUs>1</numCPUs>
