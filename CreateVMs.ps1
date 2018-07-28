@@ -233,7 +233,7 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
 
     if ($vm)
     {
-        if (Get-VM -Name $vmName -ComputerName $hvServer |  Where { $_.State -like "Running" })
+        if (Get-VM -Name $vmName -ComputerName $hvServer |  Where-Object { $_.State -like "Running" })
             {
                 Stop-VM $vmName -ComputerName $hvServer -TurnOff
                 if (-not $?) {
@@ -242,7 +242,7 @@ function DeleteVmAndVhd([String] $vmName, [String] $hvServer, [String] $vhdFilen
                 }
             }
 
-	    LogMsg 0 "Info: Cleanup: Deleting existing VM.."
+	    LogMsg 0 "Info: Cleanup: Deleting existing VM '$vmName'.."
         Remove-VM $vmName -ComputerName $hvServer -Force
     }
 
@@ -957,7 +957,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
 					LogMsg 0 "Error: Cannot attach data disk: Disk not found at $DiskPath"
 					exit 1
 				}
-				
+
 				if ($Error.Count -gt 0)
 				{
 					"Error: Failed to attach .vhd file '$vhdFilename' to VM ${vmName}"
@@ -1115,7 +1115,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 		    if ($IPv4 )
 		    {
 			    $vm.ipv4=$IPv4
-			    LogMsg 0 "`nInfo: IP of '$($vm.vmName)': '$($vm.ipv4)'"
+			    LogMsg 0 "`nInfo: IP of '$($vm.vmName)': '$($vm.ipv4)'`n"
 			    LogMsg 0 "Info: VirtualMachine took '$BootTime' seconds to boot"
 			    return $IPv4
 		    }
@@ -1132,7 +1132,7 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 	    #
 	    if ($timeout -eq 0)
 	    {
-		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable"
+		    LogMsg 0 "Error: IP of $($vm.vmName) not retrivable`n"
 	    }
     }
 }
@@ -1227,17 +1227,26 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     if ($vm.hardware)
     {
         $VmName = $vm.vmName
+        $vm | Add-Member -NotePropertyName state -NotePropertyValue $SystemDown
         for($i = 0; $i -lt $vm.Count; $i++)
         {
-            $vm.vmName = $VmName + "$i"
+            $vm.vmName = $VmName + "_$i"
             LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
             $vmCreateStatus = CreateVM $vm $xmlData
             if (-not $vmCreateStatus)
             {
                 exit $exitStatus
             }
+            LogMsg 0 "Info: Starting VM: '$($vm.vmName)'"
+            $vmStartStatus = DoStartSystem $vm $xmlData
+            if ($vmStartStatus -eq $SystemStarting)
+            {
+                $vmStartStatus = DoSystemStarting $vm $xmlData
+            }else{
+                exit $exitStatus
+            }
+            LogMsg 0 "Info:"
         }
-        $vm | Add-Member -NotePropertyName state -NotePropertyValue $SystemDown
         $vm.vmName = $VmName
     }
     else
@@ -1253,12 +1262,8 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     $VmName = $vm.vmName
     for($i = 0; $i -lt $vm.Count; $i++)
     {
-        $vm.vmName = $VmName + "$i"
-        LogMsg 0 "Info: Starting VM: '$($vm.vmName)'"
-        $vmStartStatus = DoStartSystem $vm $xmlData
-        if ($vmStartStatus -eq $SystemStarting)
-        {
-            $vmStartStatus = DoSystemStarting $vm $xmlData
+        $vm.vmName = $VmName + "_$i"
+
             $VMIP=GetVMIPv4Address $vm $xmlData
 
             if (-not $VMIP)
@@ -1287,9 +1292,6 @@ foreach ($vm in $xmlData.Config.VMs.VM)
                     LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'StartupScript' tag"
                 }
             }
-        }else{
-            exit $exitStatus
-        }
     }
     $vm.vmName = $VmName
 }
