@@ -412,7 +412,22 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     $vmName = $vm.vmName
     $hvServer = $vm.hvServer
 
-    $vhdDir = GetVhdDir $xmlData
+    #
+    # If the VM already exists, delete it
+    # If isCluster tag is set to true, make sure that a cluster is available on the server
+    #
+    if ( $vm.hardware.isCluster -eq "True") {
+        Get-Cluster
+        if ($? -eq $False){
+            LogMsg 0 "Error: Server '$hvServer' doesn't have a cluster set up"
+            return $False
+        }
+        $clusterDir = Get-ClusterSharedVolume
+        $vhdDir = $clusterDir.SharedVolumeInfo.FriendlyVolumeName
+    }
+    else {
+        $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+    }
 
     $vhdName = "${vmName}.vhd"
     $vhdFilename = "\\" + $hvServer + "\" + $vhdDir + $vhdName
@@ -446,10 +461,7 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
 		{
 			if (-not ([System.IO.Path]::IsPathRooted($dataVhd)) )
 			{
-                
-                $vhdDir = GetVhdDir( $xmlData )
-
-#				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
 				$dataVhdFile = Join-Path $vhdDir $dataVhd
 			}
 
@@ -678,36 +690,6 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData)
     return $validNicFound
 }
 
-function GetVhdDir( [XML] $xmlData )
-{
-    if ( $xmlData.Config.global.isCluster -eq "True") {
-        Get-Cluster
-        if ($? -eq $False){
-            LogMsg 0 "Error: Server '$($xmlData.Config.VMs.VM.hvServer)' doesn't have a cluster set up"
-            return $False
-        }
-        $clusterDir = Get-ClusterSharedVolume
-        $vhdDir = $clusterDir.SharedVolumeInfo.FriendlyVolumeName
-    }
-    elseif ($xmlData.Config.VMs.VM.hvServer -eq "localhost")
-    {
-        $vhdDir = Join-Path $(Get-Location) "ParentVhds"
-    }
-    else
-    {
-        $vhdDir = $(Get-VMHost -ComputerName $xmlData.Config.VMs.VM.hvServer ).VirtualHardDiskPath
-    }
-
-    if ( -not (Test-Path $vhdDir)){
-        LogMsg 0 "Error: Path $vhdDir given as parameter does not exist"
-        exit 1
-    }
-
-    if($vhdDir.EndsWith("\")) {
-        $vhdDir = $vhdDir.Substring(0,$vhdDir.Length -1)
-    }
-    return $vhdDir
-}
 #######################################################################
 #
 # CreateVM()
@@ -846,7 +828,6 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         if ($uriPath.IsUnc)
         {
             $extension = (Get-Item "${parentVhd}").Extension
-            $vhdDir = GetVhdDir $xmlData
             if ( $vm.hardware.isCluster -eq "True") {
                 $clusterDir = Get-ClusterSharedVolume
                 $vhdDir = $clusterDir.SharedVolumeInfo.FriendlyVolumeName
@@ -885,9 +866,14 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
             # If parentVhd is a relative path, then prepent the HyperV servers default VHD directory.
             #
             $vhdName = "${vmName}_diff.vhd"
-
-            $vhdDir = GetVhdDir( $xmlData )
-
+            if ($xmlData.Config.VMs.VM.hvServer -eq "localhost")
+            {
+				$vhdDir = Join-Path $(Get-Location) "ParentVhds"
+            }
+            else
+            {
+				$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
+            }
 			$vhdFilename = Join-Path $vhdDir  $vhdName
 			$vhdFilenameNetPath = "\\" + $hvServer + "\" + $vhdFilename.Replace(":","$")
             LogMsg 9 "Debug: vhdDir=$vhdDir"
@@ -947,10 +933,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData)
         $dataVhd = $vm.hardware.DataVhd
         if ($dataVhd)
         {
-            #$vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
-
-            $vhdDir = GetVhdDir( $xmlData )
-
+            $vhdDir = $(Get-VMHost -ComputerName $hvServer).VirtualHardDiskPath
             $DiskSizeList = $DataVhd.Trim().Split(",")
 			$DiskNumber=0
 			foreach ($DiskSize in $DiskSizeList)
@@ -1133,12 +1116,14 @@ function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData)
 		    {
 			    $vm.ipv4=$IPv4
 			    LogMsg 0 "`nInfo: IP of '$($vm.vmName)': '$($vm.ipv4)'`n"
+			    LogMsg 0 "Info: VirtualMachine took '$BootTime' seconds to boot"
 			    return $IPv4
 		    }
 		    Write-Host "." -NoNewline
 
 		    start-sleep -seconds 1
 		    $timeout -= 1
+            $BootTime += 1
 	    }
 	    Write-Host ""
 
@@ -1271,17 +1256,14 @@ foreach ($vm in $xmlData.Config.VMs.VM)
         exit 0
     }
 }
-
 $IpList = @()
-$VmNameList = @()
-
 foreach ($vm in $xmlData.Config.VMs.VM)
 {
     $VmName = $vm.vmName
     for($i = 0; $i -lt $vm.Count; $i++)
     {
         $vm.vmName = $VmName + "_$i"
-        $VmNameList += $vm.vmName
+
             $VMIP=GetVMIPv4Address $vm $xmlData
 
             if (-not $VMIP)
@@ -1305,6 +1287,10 @@ foreach ($vm in $xmlData.Config.VMs.VM)
                     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.StartupScript)" -runAsSudo
                     DownloadFiles $vm
                 }
+                else
+                {
+                    LogMsg 0 "Warn: No Script is being executed as '$xmlFile' missing 'StartupScript' tag"
+                }
             }
     }
     $vm.vmName = $VmName
@@ -1314,13 +1300,12 @@ $TimeElapsed.Stop()
 LogMsg 0 "Info: Total execution time: $($TimeElapsed.Elapsed.TotalSeconds) Seconds"
 LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
 
-for($counter = 0; $counter -lt $IpList.Count; $counter++)
+foreach ($VMIP in $IpList)
 {
-    LogMsg 0 "VM connection details '$($VmNameList[$counter])' : * ssh $($xmlData.Config.VMs.VM.userName)@$($IpList[$counter]) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
-
+    LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($VMIP) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
     if ($($xmlData.Config.VMs.VM.StartupScript) -eq "PrepareDocker.sh")
     {
-        LogMsg 0 "Test Container connection details '$($VmNameList[$counter])' : * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($IpList[$counter]) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
+        LogMsg 0 "Test Container connection details: * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
     }
 }
 $exitStatus=0
