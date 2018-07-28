@@ -1,12 +1,13 @@
 <Config>
 	<global>
 		<imageStoreDir>D:\Software\ISO</imageStoreDir>
+		<isCluster>false</isCluster>
 	</global>
 	<VMs>
 		<VM>
 		   <hvServer>localhost</hvServer>
 		   <vmName>VMname1</vmName>
-		   <Count>1</Count>
+		   <Count>3</Count>
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
@@ -16,8 +17,8 @@
 			   <numCPUs>1</numCPUs>
 			   <memSize>1024</memSize>
 			   <disableDiff>false</disableDiff>
-			   <parentVhd>Ubuntu1604.vhd</parentVhd>
-			   <nic>VMBUS,Default Switch</nic>
+			   <parentVhd>Ubuntu1604_1.vhd</parentVhd>
+			   <nic>VMBUS,ExternalSwitch</nic>
 			   <generation>1</generation>
 			   <secureBoot>false</secureBoot>
 			   <DataVhd>1GB</DataVhd>
