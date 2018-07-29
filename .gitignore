@@ -1,10 +1,8 @@
 Logs/
 ParentVhds/
-*.exe
 *.log
 *.txt
 *.bsw
 *.vhd
 *.avhd
 SampleConfig_2.xml
-SampleConfig.xml
