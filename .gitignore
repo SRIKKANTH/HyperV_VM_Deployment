@@ -6,3 +6,4 @@ ParentVhds/
 *.vhd
 *.avhd
 SampleConfig_2.xml
+*.exe
