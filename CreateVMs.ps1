@@ -1203,6 +1203,22 @@ function DownloadFiles ([System.Xml.XmlElement] $vm)
 
 	RemoteCopy -download -downloadFrom $vm.ipv4 -files "*" -downloadTo $VMLogDownloadFolder -port 22 -username $vm.userName -password $vm.passWord
 }
+
+function SetVMHostName ([System.Xml.XmlElement] $vm)
+{
+    LogMsg 0 "Info: Setting Hostname.."
+    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "echo $($vm.vmName) > /etc/hostname" -runAsSudo
+    RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "hostname $($vm.vmName)" -runAsSudo -ignoreLinuxExitCode
+    $hostname=RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "hostname" -runAsSudo -ignoreLinuxExitCode
+    if ($vm.vmName -eq $hostname)
+    {
+        LogMsg 0 "Info: Setting Hostname.. Success"    
+    }
+    else
+    {
+        LogMsg 0 "Error: Setting Hostname.. Failed"    
+    }
+}
 #######################################################################
 #
 # Main script body
@@ -1245,7 +1261,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
         $vm | Add-Member -NotePropertyName state -NotePropertyValue $SystemDown
         for($i = 0; $i -lt $vm.Count; $i++)
         {
-            $vm.vmName = $VmName + "_$i"
+            $vm.vmName = $VmName + "-$i"
             LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
             $vmCreateStatus = CreateVM $vm $xmlData
             if (-not $vmCreateStatus)
@@ -1280,7 +1296,7 @@ foreach ($vm in $xmlData.Config.VMs.VM)
     $VmName = $vm.vmName
     for($i = 0; $i -lt $vm.Count; $i++)
     {
-        $vm.vmName = $VmName + "_$i"
+        $vm.vmName = $VmName + "-$i"
         $VmNameList += $vm.vmName
             $VMIP=GetVMIPv4Address $vm $xmlData
 
@@ -1292,6 +1308,8 @@ foreach ($vm in $xmlData.Config.VMs.VM)
             }
             else
             {
+                SetVMHostName($vm)
+
                 $IpList += $VMIP
                 if ($($xmlData.Config.VMs.VM.StartupScript))
                 {
