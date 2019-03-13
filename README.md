@@ -1,5 +1,7 @@
 <b>Prerequisites: </b>
-1. Make sure Hyper-V is installed and configured with atleast 1 virtual switch. <br />
+1. Make sure Hyper-V is installed and configured with atleast 1 virtual switch. Then update its name in below field of 'SampleConfig.xml'
+<nic>VMBUS,Default Switch</nic>
+<br />
 2. A Linux VHD with following:<br />
 	a. Root user configured with password.<br />
 	b. Enable root to connect through ssh.<br />
