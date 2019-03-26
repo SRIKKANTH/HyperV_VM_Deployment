@@ -1207,6 +1207,7 @@ function DownloadFiles ([System.Xml.XmlElement] $vm)
 function SetVMHostName ([System.Xml.XmlElement] $vm)
 {
     LogMsg 0 "Info: Setting Hostname.."
+
     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "echo $($vm.vmName) > /etc/hostname" -runAsSudo
     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "hostname $($vm.vmName)" -runAsSudo -ignoreLinuxExitCode
     $hostname=RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "hostname" -runAsSudo -ignoreLinuxExitCode
@@ -1305,20 +1306,23 @@ foreach ($vm in $xmlData.Config.VMs.VM)
                 LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
                 LogMsg 0 "Fix: run 'sudo apt install *`uname -r`* in the parent .vhd and use it'"
                 LogMsg 0 "Error: Also check Switch settings!"
+                exit 1
             }
             else
             {
                 SetVMHostName($vm)
 
                 $IpList += $VMIP
-                if ($($xmlData.Config.VMs.VM.StartupScript))
+
+                if ($vm.StartupScript)
                 {
                     UploadFiles $vm
                     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "chmod +x *" -runAsSudo
 
                     LogMsg 0 "Invoking the main script on the VM. It might take several minutes to complete." "White" "Red"
                     LogMsg 0 "Meanwhile you can check the execution status by running 'tail -f ConsoleLogFile.log' on the test VM." "White" "Red"
-                    LogMsg 0 "VM connection details: * ssh $($xmlData.Config.VMs.VM.userName)@$($vm.ipv4) * Password:$($xmlData.Config.VMs.VM.passWord) " "White" "Red"
+
+                    LogMsg 0 "VM connection details: * ssh $($vm.userName)@$($vm.ipv4) * Password:$($vm.passWord) " "White" "Red"
 
                     RunLinuxCmd -username $vm.userName -password $vm.passWord -ip $vm.ipv4 -port 22 -command "bash $($vm.StartupScript)" -runAsSudo
                     DownloadFiles $vm
@@ -1334,11 +1338,12 @@ LogMsg 0 "Logs are located at '$LogFolder'" "White" "Black"
 
 for($counter = 0; $counter -lt $IpList.Count; $counter++)
 {
-    LogMsg 0 "VM connection details '$($VmNameList[$counter])' : * ssh $($xmlData.Config.VMs.VM.userName)@$($IpList[$counter]) * Password: * $($xmlData.Config.VMs.VM.passWord) *" "White" "Red"
+    $vm =$xmlData.Config.VMs.VM[$counter] 
+    LogMsg 0 "VM connection details '$($VmNameList[$counter])' : * ssh $($vm.userName)@$($IpList[$counter]) * Password: * $($vm.passWord) *" "White" "Red"
 
-    if ($($xmlData.Config.VMs.VM.StartupScript) -eq "PrepareDocker.sh")
+    if ($vm.StartupScript -eq "PrepareDocker.sh")
     {
-        LogMsg 0 "Test Container connection details '$($VmNameList[$counter])' : * ssh -p 222 $($xmlData.Config.VMs.VM.userName)@$($IpList[$counter]) * Password:$($xmlData.Config.VMs.VM.passWord)" "White" "Red"
+        LogMsg 0 "Test Container connection details '$($VmNameList[$counter])' : * ssh -p 222 $($vm.userName)@$($IpList[$counter]) * Password: $($vm.passWord)" "White" "Red"
     }
 }
 $exitStatus=0

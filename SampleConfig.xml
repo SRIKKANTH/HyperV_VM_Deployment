@@ -11,17 +11,37 @@
 		   <ipv4></ipv4>
 		   <userName>root</userName>
 		   <passWord>SamplePassword</passWord>
-		   <StartupScript></StartupScript>
+		   <StartupScript>SampleScript.sh</StartupScript>
 		   <hardware>
 			   <create>true</create>
 			   <numCPUs>1</numCPUs>
-			   <memSize>1024</memSize>
+			   <memSize>512</memSize>
 			   <disableDiff>false</disableDiff>
-			   <parentVhd>Ubuntu1604.vhd</parentVhd>
-			   <nic>VMBUS,Default Switch</nic>
+			   <parentVhd>Ubuntu1804.vhd</parentVhd>
+			   <nic>VMBUS,ExternalVirtualSwitch</nic>
 			   <generation>1</generation>
 			   <secureBoot>false</secureBoot>
-			   <DataVhd>2GB</DataVhd>
+			   <DataVhd></DataVhd>
+		   </hardware>
+		</VM>
+		<VM>
+		   <hvServer>localhost</hvServer>
+		   <vmName>LinuxVMServer</vmName>
+		   <Count>1</Count>
+		   <ipv4></ipv4>
+		   <userName>root</userName>
+		   <passWord>SamplePassword</passWord>
+		   <StartupScript>SampleScript.sh</StartupScript>
+		   <hardware>
+			   <create>true</create>
+			   <numCPUs>1</numCPUs>
+			   <memSize>512</memSize>
+			   <disableDiff>false</disableDiff>
+			   <parentVhd>Ubuntu1804.vhd</parentVhd>
+			   <nic>VMBUS,ExternalVirtualSwitch</nic>
+			   <generation>1</generation>
+			   <secureBoot>false</secureBoot>
+			   <DataVhd></DataVhd>
 		   </hardware>	   
 		</VM>
 	</VMs>
