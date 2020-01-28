@@ -2057,7 +2057,14 @@ function GetIPv4ViaICASerial( [String] $vmName, [String] $server)
         $ipv4 = $tokens[2].Trim()
     }
 
-    return $ipv4
+    # See if it is an address we can access
+    $ping = New-Object System.Net.NetworkInformation.Ping
+    $sts = $ping.Send($ipv4)
+    if ($sts -and $sts.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+    {
+        return $ipv4
+    }
+    return $null
 }
 
 #######################################################################
@@ -2131,7 +2138,18 @@ function GetIPv4ViaKVP( [String] $vmName, [String] $server)
                     {
                         Continue
                     }
-                    return $addr
+                    
+                    if ($addr -ne "")
+                    {
+                        # See if it is an address we can access
+                        $ping = New-Object System.Net.NetworkInformation.Ping
+                        $sts = $ping.Send($addr)
+                        if ($sts -and $sts.Status -eq [System.Net.NetworkInformation.IPStatus]::Success)
+                        {
+                            return $addr
+                        }
+                    }
+                    return $null
                 }
             }
         }
