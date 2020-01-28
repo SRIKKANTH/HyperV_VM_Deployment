@@ -4,8 +4,8 @@
 2. A Linux VHD with following:<br />
 	a. Root user configured with password.<br />
 	b. Enable root to connect through ssh.<br />
-	c. Install "linux-cloud-tools-`uname -r`" package. (Without this HyperV cannot get IP address of the VM)<br />
-		$ sudo apt install *`uname -r`*  # should install all the required packages<br />
+	c. Install "linux-cloud-tools-\`uname -r\`" package. (Without this HyperV cannot get IP address of the VM)<br />
+		$ sudo apt install *\`uname -r\`*  # should install all the required packages<br />
 		$ sudo apt install dhcpcd  # enables dhcp client on all attched NICs<br />
 3. Keep following binaries in ".\bin" directory.<br />
 	a. dos2unix.exe<br />
