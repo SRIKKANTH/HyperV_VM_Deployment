@@ -1,2 +1,2 @@
 ConsoleLogFile=ConsoleLogFile.log
-bash PrepareDocker.sh > $ConsoleLogFile
+uname -a > $ConsoleLogFile

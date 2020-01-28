@@ -6,30 +6,6 @@
 	<VMs>
 		<VM>
 			<hvServer>localhost</hvServer>
-			<vmName>airflow-worker</vmName>
-			<Count>1</Count>
-			<ipv4></ipv4>
-			<userName>root</userName>
-			<passWord>SamplePassword</passWord>
-			<StartupScript>SampleScript.sh</StartupScript>
-			<hardware>
-				<create>true</create>
-				<numCPUs>2</numCPUs>
-				<memSize>2048</memSize>
-				<disableDiff>false</disableDiff>
-				<parentVhd>UbuntuBase.vhd</parentVhd>
-				<network>
-					<nic>VMBUS,PrivateSwitch</nic>
-					<nic>VMBUS,InternalSwitch</nic>
-					<nic>VMBUS,Ethernet</nic>
-				</network>
-				<generation>1</generation>
-				<secureBoot>false</secureBoot>
-				<DataVhd></DataVhd>
-			</hardware>
-		</VM>
-		<VM>
-			<hvServer>localhost</hvServer>
 			<vmName>airflow-backend</vmName>
 			<Count>1</Count>
 			<ipv4></ipv4>
@@ -44,6 +20,8 @@
 				<parentVhd>UbuntuBase.vhd</parentVhd>
 				<network>
 					<nic>VMBUS,PrivateSwitch</nic>
+					<nic>VMBUS,InternalSwitch</nic>
+					<nic>VMBUS,USB</nic>
 				</network>
 				<generation>1</generation>
 				<secureBoot>false</secureBoot>
@@ -67,6 +45,31 @@
 				<network>
 					<nic>VMBUS,InternalSwitch</nic>
 					<nic>VMBUS,Ethernet</nic>
+					<nic>VMBUS,USB</nic>
+				</network>
+				<generation>1</generation>
+				<secureBoot>false</secureBoot>
+				<DataVhd></DataVhd>
+			</hardware>
+		</VM>
+		<VM>
+			<hvServer>localhost</hvServer>
+			<vmName>airflow-worker</vmName>
+			<Count>1</Count>
+			<ipv4></ipv4>
+			<userName>root</userName>
+			<passWord>SamplePassword</passWord>
+			<StartupScript>SampleScript.sh</StartupScript>
+			<hardware>
+				<create>true</create>
+				<numCPUs>2</numCPUs>
+				<memSize>2048</memSize>
+				<disableDiff>false</disableDiff>
+				<parentVhd>UbuntuBase.vhd</parentVhd>
+				<network>
+					<nic>VMBUS,InternalSwitch</nic>
+					<nic>VMBUS,Ethernet</nic>
+					<nic>VMBUS,USB</nic>
 				</network>
 				<generation>1</generation>
 				<secureBoot>false</secureBoot>

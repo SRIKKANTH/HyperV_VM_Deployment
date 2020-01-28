@@ -610,7 +610,6 @@ function CheckRequiredParameters([System.Xml.XmlElement] $vm, [XML]$xmlData) {
     #
     return $validNicFound
 }
-
 function GetVhdDir( [XML] $xmlData ) {
     if ( $xmlData.Config.global.isCluster -eq "True") {
         Get-Cluster
@@ -988,7 +987,7 @@ function CreateVM([System.Xml.XmlElement] $vm, [XML] $xmlData) {
 function GetVMIPv4Address([System.Xml.XmlElement] $vm, [XML] $xmlData) {
     $BootTime = 0
     LogMsg 0 "Info: Getting IPv4 address of '$($vm.vmName)'"
-    $timeout = 180
+    $timeout = 30
     while ($timeout -gt 0) {
         #
         # Check if the VM is in the Hyper-v Running state
@@ -1135,7 +1134,12 @@ foreach ($vm in $xmlData.Config.VMs.VM) {
         $VmName = $vm.vmName
         $vm | Add-Member -NotePropertyName state -NotePropertyValue $SystemDown
         for ($i = 0; $i -lt $vm.Count; $i++) {
-            $vm.vmName = $VmName + "-$i"
+            $vm.vmName = $VmName
+
+            if ($vm.Count -gt 1) {
+                $vm.vmName = $vm.vmName + "-$i"
+            }
+
             LogMsg 0 "Info: Creating VM: '$($vm.vmName)'"
             $vmCreateStatus = CreateVM $vm $xmlData
             if (-not $vmCreateStatus) {
@@ -1166,7 +1170,12 @@ $VmNameList = @()
 foreach ($vm in $xmlData.Config.VMs.VM) {
     $VmName = $vm.vmName
     for ($i = 0; $i -lt $vm.Count; $i++) {
-        $vm.vmName = $VmName + "-$i"
+        $vm.vmName = $VmName
+
+        if ($vm.Count -gt 1) {
+            $vm.vmName = $vm.vmName + "-$i"
+        }
+
         $VmNameList += $vm.vmName
         $VMIP = GetVMIPv4Address $vm $xmlData
 
@@ -1174,7 +1183,6 @@ foreach ($vm in $xmlData.Config.VMs.VM) {
             LogMsg 0 "Error: Unable to get the VM IP, Did you install 'linux-cloud-tools' package in parentVhd? "
             LogMsg 0 "Fix: run 'sudo apt install *`uname -r`* in the parent .vhd and use it'"
             LogMsg 0 "Error: Also check Switch settings!"
-            exit 1
         }
         else {
             SetVMHostName($vm)
